@@ -1273,11 +1273,16 @@ namespace BiliNetEaseIntegratedApp
                 try
                 {
                     await Task.Delay(TimeSpan.FromSeconds(15), ct);
+                    long lastNotifiedCheck = 0;
                     while (!ct.IsCancellationRequested)
                     {
                         var check = await UpdateService.CheckAsync(false, ct);
-                        if (check.ok && check.hasUpdate && !check.dismissed)
+                        if (check.ok && check.hasUpdate && !check.dismissed &&
+                            check.lastCheckUtc > lastNotifiedCheck)
+                        {
+                            lastNotifiedCheck = check.lastCheckUtc;
                             _tray?.NotifyUpdateAvailable(check.latestVersion);
+                        }
                         await Task.Delay(TimeSpan.FromHours(6), ct);
                     }
                 }
