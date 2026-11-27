@@ -1,0 +1,21 @@
+# ---- build ----
+bin/
+obj/
+publish/
+.vs/
+*.user
+*.suo
+
+# ---- runtime data (never commit) ----
+DeckData/
+config.json
+overlay-config.json
+overlay-state.json
+overlay-assets/
+ncm-path.txt
+*.log
+*.log.*
+
+# ---- packages / local artifacts ----
+*.zip
+BiliNCM-Deck-*/

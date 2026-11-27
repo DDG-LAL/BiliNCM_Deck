@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>点歌队列</title>
+<style>
+  :root{
+    --bg: rgba(17,19,25,.88);
+    --panel: rgba(255,255,255,.045);
+    --line: rgba(255,255,255,.08);
+    --text:#f4f6fa;
+    --sub:#98a2b3;
+    --accent:#22d3ee;
+    --accent-soft:rgba(34,211,238,.10);
+    --accent-line:rgba(34,211,238,.18);
+    --accent-strong:rgba(34,211,238,.14);
+    --accent-strong-line:rgba(34,211,238,.25);
+    --good:#4ade80;
+    --good-soft:rgba(74,222,128,.10);
+    --good-line:rgba(74,222,128,.16);
+    --good-ring:rgba(74,222,128,.12);
+    --warn:#fbbf24;
+    --warn-ring:rgba(251,191,36,.12);
+    --bad:#f87171;
+    --bad-soft:rgba(248,113,113,.13);
+    --bad-line:rgba(248,113,113,.28);
+    --bad-ring:rgba(248,113,113,.12);
+    --bad-fade:rgba(248,113,113,.04);
+    --bad-fade-line:rgba(248,113,113,.18);
+    --neutral:#aab3c0;
+    --neutral-soft:rgba(170,179,192,.10);
+    --neutral-line:rgba(170,179,192,.20);
+    --row-line:rgba(255,255,255,.035);
+    --current-from:rgba(74,222,128,.10);
+    --current-to:rgba(255,255,255,.015);
+    --alert-text:#fecaca;
+    --card-radius:20px;
+    --card-shadow:0 14px 44px rgba(0,0,0,.34);
+    --card-blur:blur(14px);
+    --card-border:1px;
+    --deco-1:rgba(34,211,238,.16);
+    --deco-2:rgba(74,222,128,.10);
+    --scrim-rgb:8,10,15;
+    --font:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+    --bg-image:none;
+    --bg-opacity:1;
+    --bg-focus:50% 50%;
+    --scrim-alpha:.32;
+    --scrim-alpha-2:.25;
+  }
+
+  /* ---- built-in skins ------------------------------------------------ */
+  body[data-skin="neon"]{
+    --bg:linear-gradient(160deg,rgba(6,10,20,.95),rgba(14,6,26,.93));
+    --panel:rgba(34,211,238,.045);
+    --line:rgba(34,211,238,.18);
+    --text:#eafcff;
+    --sub:#93a9bd;
+    --accent:#22d3ee;
+    --accent-soft:rgba(34,211,238,.10);
+    --accent-line:rgba(34,211,238,.28);
+    --accent-strong:rgba(34,211,238,.16);
+    --accent-strong-line:rgba(34,211,238,.38);
+    --good:#4ade80;
+    --good-soft:rgba(74,222,128,.12);
+    --good-line:rgba(74,222,128,.24);
+    --good-ring:rgba(74,222,128,.14);
+    --warn:#fbbf24;
+    --warn-ring:rgba(251,191,36,.14);
+    --bad:#fb7185;
+    --bad-soft:rgba(251,113,133,.13);
+    --bad-line:rgba(251,113,133,.30);
+    --bad-ring:rgba(251,113,133,.14);
+    --bad-fade:rgba(251,113,133,.05);
+    --bad-fade-line:rgba(251,113,133,.20);
+    --neutral:#9db4c8;
+    --neutral-soft:rgba(157,180,200,.10);
+    --neutral-line:rgba(157,180,200,.22);
+    --row-line:rgba(34,211,238,.10);
+    --current-from:rgba(34,211,238,.12);
+    --current-to:rgba(232,121,249,.05);
+    --alert-text:#fecdd3;
+    --card-shadow:0 0 0 1px rgba(34,211,238,.14),0 18px 50px rgba(0,0,0,.55);
+    --deco-1:rgba(34,211,238,.20);
+    --deco-2:rgba(232,121,249,.13);
+    --scrim-rgb:4,8,18;
+  }
+  body[data-skin="neon"] .card::before{
+    top:0;left:0;width:100%;height:100%;
+    background:
+      repeating-linear-gradient(0deg,rgba(34,211,238,.05) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(34,211,238,.04) 0 1px,transparent 1px 26px),
+      radial-gradient(circle at 15% 8%,rgba(34,211,238,.18),transparent 42%),
+      radial-gradient(circle at 90% 92%,rgba(232,121,249,.12),transparent 42%);
+  }
+  body[data-skin="neon"] .card::after{display:none}
+
+  body[data-skin="mist"]{
+    --bg:linear-gradient(160deg,rgba(232,241,251,.94),rgba(207,222,240,.92));
+    --panel:rgba(255,255,255,.44);
+    --line:rgba(30,64,110,.14);
+    --text:#152238;
+    --sub:#4a5f7a;
+    --accent:#4338ca;
+    --accent-soft:rgba(67,56,202,.11);
+    --accent-line:rgba(67,56,202,.27);
+    --accent-strong:rgba(67,56,202,.16);
+    --accent-strong-line:rgba(67,56,202,.36);
+    --good:#15803d;
+    --good-soft:rgba(21,128,61,.11);
+    --good-line:rgba(21,128,61,.24);
+    --good-ring:rgba(21,128,61,.14);
+    --warn:#b45309;
+    --warn-ring:rgba(180,83,9,.14);
+    --bad:#b91c1c;
+    --bad-soft:rgba(185,28,28,.10);
+    --bad-line:rgba(185,28,28,.24);
+    --bad-ring:rgba(185,28,28,.12);
+    --bad-fade:rgba(185,28,28,.05);
+    --bad-fade-line:rgba(185,28,28,.18);
+    --neutral:#5b6f88;
+    --neutral-soft:rgba(91,111,136,.11);
+    --neutral-line:rgba(91,111,136,.22);
+    --row-line:rgba(30,64,110,.08);
+    --current-from:rgba(67,56,202,.15);
+    --current-to:rgba(255,255,255,.38);
+    --alert-text:#991b1b;
+    --card-shadow:0 14px 44px rgba(30,64,110,.20);
+    --deco-1:rgba(67,56,202,.20);
+    --deco-2:rgba(14,165,233,.16);
+    --scrim-rgb:238,244,251;
+  }
+
+  body[data-skin="sakura"]{
+    --bg:linear-gradient(160deg,rgba(255,224,240,.95),rgba(255,194,221,.93));
+    --panel:rgba(255,248,252,.48);
+    --line:rgba(190,24,93,.17);
+    --text:#47142d;
+    --sub:#8a4766;
+    --accent:#d61f74;
+    --accent-soft:rgba(214,31,116,.12);
+    --accent-line:rgba(214,31,116,.28);
+    --accent-strong:rgba(214,31,116,.17);
+    --accent-strong-line:rgba(214,31,116,.38);
+    --good:#15803d;
+    --good-soft:rgba(21,128,61,.11);
+    --good-line:rgba(21,128,61,.24);
+    --good-ring:rgba(21,128,61,.14);
+    --warn:#b45309;
+    --warn-ring:rgba(180,83,9,.14);
+    --bad:#b91c1c;
+    --bad-soft:rgba(185,28,28,.10);
+    --bad-line:rgba(185,28,28,.24);
+    --bad-ring:rgba(185,28,28,.12);
+    --bad-fade:rgba(185,28,28,.05);
+    --bad-fade-line:rgba(185,28,28,.18);
+    --neutral:#95617a;
+    --neutral-soft:rgba(149,97,122,.11);
+    --neutral-line:rgba(149,97,122,.24);
+    --row-line:rgba(190,24,93,.10);
+    --current-from:rgba(214,31,116,.16);
+    --current-to:rgba(255,255,255,.42);
+    --alert-text:#9f1239;
+    --card-shadow:0 14px 44px rgba(190,24,93,.22);
+    --deco-1:rgba(236,72,153,.28);
+    --deco-2:rgba(251,207,232,.55);
+    --scrim-rgb:255,240,247;
+  }
+
+  body[data-skin="pixel"]{
+    --bg:#10141f;
+    --panel:rgba(163,230,53,.06);
+    --line:rgba(163,230,53,.20);
+    --text:#e5e7eb;
+    --sub:#9ca3af;
+    --accent:#a3e635;
+    --accent-soft:rgba(163,230,53,.10);
+    --accent-line:rgba(163,230,53,.28);
+    --accent-strong:rgba(163,230,53,.16);
+    --accent-strong-line:rgba(163,230,53,.36);
+    --good:#4ade80;
+    --good-soft:rgba(74,222,128,.12);
+    --good-line:rgba(74,222,128,.24);
+    --good-ring:rgba(74,222,128,.14);
+    --warn:#fbbf24;
+    --warn-ring:rgba(251,191,36,.14);
+    --bad:#f87171;
+    --bad-soft:rgba(248,113,113,.13);
+    --bad-line:rgba(248,113,113,.28);
+    --bad-ring:rgba(248,113,113,.14);
+    --bad-fade:rgba(248,113,113,.05);
+    --bad-fade-line:rgba(248,113,113,.18);
+    --neutral:#9ca3af;
+    --neutral-soft:rgba(156,163,175,.10);
+    --neutral-line:rgba(156,163,175,.22);
+    --row-line:rgba(163,230,53,.12);
+    --current-from:rgba(163,230,53,.10);
+    --current-to:rgba(255,255,255,.01);
+    --alert-text:#fecaca;
+    --card-radius:0px;
+    --card-shadow:6px 6px 0 rgba(0,0,0,.35);
+    --card-blur:none;
+    --card-border:2px;
+    --deco-1:transparent;
+    --deco-2:transparent;
+    --scrim-rgb:5,8,14;
+    --font:Consolas,"Courier New",monospace;
+  }
+  body[data-skin="pixel"] .card,
+  body[data-skin="pixel"] .current,
+  body[data-skin="pixel"] .row,
+  body[data-skin="pixel"] .empty,
+  body[data-skin="pixel"] .alert,
+  body[data-skin="pixel"] .count,
+  body[data-skin="pixel"] .badge,
+  body[data-skin="pixel"] .idx{border-radius:0}
+  body[data-skin="pixel"] .card::before,
+  body[data-skin="pixel"] .card::after{display:none}
+  body[data-skin="pixel"] .brand{letter-spacing:.12em}
+  body[data-skin="pixel"] .idx{box-shadow:2px 2px 0 rgba(0,0,0,.35)}
+
+  body[data-skin="lyric"]{
+    --bg:transparent;
+    --panel:rgba(0,0,0,.20);
+    --line:rgba(255,255,255,.10);
+    --text:#ffffff;
+    --sub:rgba(255,255,255,.72);
+    --accent:#7dd3fc;
+    --accent-soft:rgba(125,211,252,.10);
+    --accent-line:rgba(125,211,252,.24);
+    --accent-strong:rgba(125,211,252,.14);
+    --accent-strong-line:rgba(125,211,252,.30);
+    --good:#86efac;
+    --good-soft:rgba(134,239,172,.12);
+    --good-line:rgba(134,239,172,.24);
+    --good-ring:rgba(134,239,172,.12);
+    --warn:#fde68a;
+    --warn-ring:rgba(253,230,138,.12);
+    --bad:#fca5a5;
+    --bad-soft:rgba(252,165,165,.12);
+    --bad-line:rgba(252,165,165,.28);
+    --bad-ring:rgba(252,165,165,.12);
+    --bad-fade:rgba(252,165,165,.05);
+    --bad-fade-line:rgba(252,165,165,.20);
+    --neutral:rgba(255,255,255,.65);
+    --neutral-soft:rgba(255,255,255,.10);
+    --neutral-line:rgba(255,255,255,.18);
+    --row-line:rgba(255,255,255,.06);
+    --current-from:rgba(0,0,0,.22);
+    --current-to:rgba(0,0,0,.10);
+    --alert-text:#fecaca;
+    --card-shadow:none;
+    --card-blur:none;
+    --deco-1:transparent;
+    --deco-2:transparent;
+    --scrim-rgb:0,0,0;
+  }
+  body[data-skin="lyric"] .card::before,
+  body[data-skin="lyric"] .card::after{display:none}
+  body[data-skin="lyric"] .current{background:rgba(0,0,0,.20);border-color:rgba(255,255,255,.12)}
+  body[data-skin="lyric"] .row{background:rgba(0,0,0,.24)}
+  body[data-skin="lyric"] .cur-name,
+  body[data-skin="lyric"] .row-name,
+  body[data-skin="lyric"] .brand,
+  body[data-skin="lyric"] .count,
+  body[data-skin="lyric"] .label,
+  body[data-skin="lyric"] .cur-artist,
+  body[data-skin="lyric"] .row-artist,
+  body[data-skin="lyric"] .row-by,
+  body[data-skin="lyric"] .empty,
+  body[data-skin="lyric"] .more,
+  body[data-skin="lyric"] #statusText{
+    text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95);
+  }
+
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%;margin:0;background:transparent;overflow:hidden}
+  body{
+    font-family:var(--font);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+  }
+  .card{
+    position:relative;
+    isolation:isolate;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding:16px 16px 12px;
+    border-radius:var(--card-radius);
+    background:var(--bg);
+    border:var(--card-border) solid var(--line);
+    box-shadow:var(--card-shadow);
+    backdrop-filter:var(--card-blur);
+    -webkit-backdrop-filter:var(--card-blur);
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    z-index:0;
+    top:-90px;left:-70px;
+    width:220px;height:220px;
+    background:radial-gradient(circle,var(--deco-1),transparent 65%);
+    pointer-events:none;
+  }
+  .card::after{
+    content:"";
+    position:absolute;
+    z-index:0;
+    right:-80px;bottom:-100px;
+    width:220px;height:220px;
+    background:radial-gradient(circle,var(--deco-2),transparent 65%);
+    pointer-events:none;
+  }
+  .card > :not(.card-bg){position:relative;z-index:1}
+  .card-bg{
+    display:none;
+    position:absolute;
+    inset:0;
+    z-index:0;
+    border-radius:inherit;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  body.has-bg .card-bg{display:block}
+  body.has-bg .card::before,
+  body.has-bg .card::after{display:none}
+  .bg-blur,.bg-photo,.bg-scrim{position:absolute;inset:0}
+  .bg-blur{
+    display:none;
+    background-image:var(--bg-image);
+    background-size:cover;
+    background-position:var(--bg-focus);
+    background-repeat:no-repeat;
+    filter:blur(28px) saturate(.9);
+    transform:scale(1.14);
+    opacity:var(--bg-opacity);
+  }
+  body[data-fit="contain-blur"] .bg-blur{display:block}
+  .bg-photo{
+    background-image:var(--bg-image);
+    background-size:cover;
+    background-position:var(--bg-focus);
+    background-repeat:no-repeat;
+    opacity:var(--bg-opacity);
+  }
+  body[data-fit="contain-blur"] .bg-photo{
+    background-size:contain;
+    background-position:center;
+  }
+  body[data-fit="stretch"] .bg-photo{
+    background-size:100% 100%;
+    background-position:center;
+  }
+  .bg-scrim{
+    background:linear-gradient(180deg,
+      rgba(var(--scrim-rgb),var(--scrim-alpha)),
+      rgba(var(--scrim-rgb),var(--scrim-alpha-2)));
+  }
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:8px;flex:none;
+  }
+  .brand{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.06em}
+  .brand-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--good);
+    box-shadow:0 0 0 4px var(--good-ring);
+    transition:background .2s,box-shadow .2s;
+  }
+  .brand-dot.paused{background:var(--warn);box-shadow:0 0 0 4px var(--warn-ring)}
+  .brand-dot.offline{background:var(--bad);box-shadow:0 0 0 4px var(--bad-ring)}
+  .count{
+    font-size:11px;color:var(--accent);
+    background:var(--accent-soft);
+    border:1px solid var(--accent-line);
+    padding:3px 8px;border-radius:999px;
+    white-space:nowrap;
+  }
+  .current{
+    flex:none;
+    margin-top:12px;
+    padding:13px 14px;
+    border-radius:14px;
+    background:linear-gradient(135deg,var(--current-from),var(--current-to));
+    border:1px solid var(--good-line);
+  }
+  .label{
+    font-size:10px;letter-spacing:.16em;color:var(--sub);
+    text-transform:uppercase;
+  }
+  .cur-name{
+    margin-top:6px;
+    font-size:19px;font-weight:700;line-height:1.28;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    word-break:break-word;
+  }
+  .cur-meta{
+    margin-top:5px;
+    display:flex;align-items:center;gap:7px;
+    min-height:18px;
+    font-size:11px;color:var(--sub);
+  }
+  .cur-artist{
+    min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .badge{
+    flex:none;
+    font-size:10px;font-weight:700;letter-spacing:.03em;
+    padding:2px 7px;border-radius:999px;
+    white-space:nowrap;
+  }
+  .badge-d{color:var(--accent);background:var(--accent-strong);border:1px solid var(--accent-strong-line)}
+  .badge-s{color:var(--neutral);background:var(--neutral-soft);border:1px solid var(--neutral-line)}
+  .cur-by{
+    margin-left:auto;
+    flex:none;
+    color:var(--accent);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    max-width:44%;
+  }
+  .queue{
+    flex:1;min-height:0;
+    display:flex;flex-direction:column;
+    margin-top:13px;
+  }
+  .queue-head{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:7px;
+  }
+  .queue-head .label{text-transform:none;letter-spacing:.10em}
+  .queue-list{
+    list-style:none;margin:0;padding:0;
+    flex:0 1 auto;
+    display:flex;flex-direction:column;gap:6px;
+    overflow:hidden;
+  }
+  .row{
+    flex:none;
+    display:flex;align-items:center;gap:9px;
+    padding:8px 9px;
+    border-radius:11px;
+    background:var(--panel);
+    border:1px solid var(--row-line);
+  }
+  .idx{
+    flex:none;
+    width:20px;height:20px;border-radius:6px;
+    display:grid;place-items:center;
+    font-size:10px;font-weight:700;
+    color:var(--accent);
+    background:var(--accent-strong);
+  }
+  .row-main{flex:1;min-width:0}
+  .row-name{
+    font-size:12.5px;font-weight:600;line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .row-artist{
+    margin-top:2px;
+    font-size:10.5px;color:var(--sub);line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .row-by{
+    flex:none;max-width:38%;
+    font-size:10.5px;color:var(--accent);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .empty{
+    flex:1;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--sub);
+    border:1px dashed var(--line);
+    border-radius:12px;
+    min-height:56px;
+  }
+  .more{
+    flex:none;
+    margin-top:6px;
+    font-size:10.5px;color:var(--sub);text-align:right;
+  }
+  footer{
+    flex:none;
+    margin-top:10px;
+    padding-top:9px;
+    border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:6px;
+    font-size:10.5px;color:var(--sub);
+    white-space:nowrap;overflow:hidden;
+  }
+  .status-dot{
+    flex:none;width:6px;height:6px;border-radius:50%;
+    background:var(--good);
+  }
+  .status-dot.paused{background:var(--warn)}
+  .status-dot.offline{background:var(--bad)}
+  #statusText{overflow:hidden;text-overflow:ellipsis}
+  .alert{
+    flex:none;
+    margin-top:8px;
+    padding:7px 9px;
+    border-radius:9px;
+    font-size:10.5px;line-height:1.35;
+    color:var(--alert-text);
+    background:var(--bad-soft);
+    border:1px solid var(--bad-line);
+  }
+  .stale .card{opacity:.55}
+  .stale .current{border-color:var(--bad-fade-line);background:var(--bad-fade)}
+  .stale .cur-name{color:var(--sub)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-bg" id="cardBg" aria-hidden="true">
+      <div class="bg-blur"></div>
+      <div class="bg-photo"></div>
+      <div class="bg-scrim"></div>
+    </div>
+
+    <header>
+      <div class="brand"><span class="brand-dot" id="brandDot"></span><span>点歌队列</span></div>
+      <div class="count" id="count">0 首待播</div>
+    </header>
+
+    <section class="current">
+      <div class="label">正在播放</div>
+      <div class="cur-name" id="curName">空闲中</div>
+      <div class="cur-meta">
+        <span class="cur-artist" id="curArtist"></span>
+        <span class="badge badge-s" id="curBadge" hidden></span>
+        <span class="cur-by" id="curBy"></span>
+      </div>
+    </section>
+
+    <section class="queue">
+      <div class="queue-head">
+        <div class="label">待播</div>
+        <div class="label" id="pendingCount">0 首</div>
+      </div>
+      <ol class="queue-list" id="pendingList"></ol>
+      <div class="empty" id="empty">暂无待播点歌</div>
+      <div class="more" id="more" hidden></div>
+    </section>
+
+    <footer>
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">连接中…</span>
+    </footer>
+
+    <div class="alert" id="alert" hidden></div>
+  </div>
+
+<script>
+(function () {
+  var MAX_ROWS = 6;
+  var SKINS = ['default', 'neon', 'mist', 'sakura', 'pixel', 'lyric'];
+  var FITS = ['cover', 'contain-blur', 'stretch'];
+  var DEMO = /[?&]demo=1/.test(location.search);
+  var ALERTS = {
+    bot_autoplay_on: '点歌机自动播放已被恢复；为避免切歌，兼容层没有强制暂停。请勿点暂停，等当前歌曲自然结束后再处理。'
+  };
+  var curName = document.getElementById('curName');
+  var curArtist = document.getElementById('curArtist');
+  var curBadge = document.getElementById('curBadge');
+  var curBy = document.getElementById('curBy');
+  var pendingList = document.getElementById('pendingList');
+  var pendingCount = document.getElementById('pendingCount');
+  var countBadge = document.getElementById('count');
+  var emptyEl = document.getElementById('empty');
+  var moreEl = document.getElementById('more');
+  var statusText = document.getElementById('statusText');
+  var statusDot = document.getElementById('statusDot');
+  var brandDot = document.getElementById('brandDot');
+  var alertEl = document.getElementById('alert');
+  var lastConfigKey = '';
+
+  function setText(el, text) {
+    if (el.textContent !== text) el.textContent = text;
+  }
+
+  function clampInt(value, min, max, fallback) {
+    var n = parseInt(value, 10);
+    if (isNaN(n)) n = fallback;
+    if (n < min) n = min;
+    if (n > max) n = max;
+    return n;
+  }
+
+  function snapFocus(value, fallback) {
+    var n = parseInt(value, 10);
+    if (isNaN(n)) n = fallback;
+    if (n < 25) return 0;
+    if (n < 75) return 50;
+    return 100;
+  }
+
+  function applyConfig(cfg) {
+    var source = cfg || {};
+    var skin = String(source.skin || 'default');
+    if (SKINS.indexOf(skin) < 0) skin = 'default';
+
+    var bg = source.background || {};
+    var file = typeof bg.file === 'string' ? bg.file : '';
+    if (!/^bg-[A-Za-z0-9-]+\.(png|jpg|jpeg)$/.test(file)) file = '';
+    var fit = String(bg.fit || 'cover');
+    if (FITS.indexOf(fit) < 0) fit = 'cover';
+    var opacity = clampInt(bg.opacity, 0, 100, 100);
+    var scrim = clampInt(bg.scrim, 0, 100, 35);
+    var fx = snapFocus(bg.focusX, 50);
+    var fy = snapFocus(bg.focusY, 50);
+
+    var key = [skin, file, fit, opacity, scrim, fx, fy].join('|');
+    if (key === lastConfigKey) return;
+    lastConfigKey = key;
+
+    document.body.setAttribute('data-skin', skin);
+    document.body.setAttribute('data-fit', fit);
+    if (file) document.body.classList.add('has-bg');
+    else document.body.classList.remove('has-bg');
+
+    var root = document.documentElement;
+    if (file) root.style.setProperty('--bg-image', 'url("/assets/' + encodeURIComponent(file) + '")');
+    else root.style.setProperty('--bg-image', 'none');
+    var effectiveScrim = opacity > 0 ? scrim : 0;
+    root.style.setProperty('--bg-opacity', String(opacity / 100));
+    root.style.setProperty('--bg-focus', fx + '% ' + fy + '%');
+    root.style.setProperty('--scrim-alpha', String((effectiveScrim / 100) * 0.92));
+    root.style.setProperty('--scrim-alpha-2', String((effectiveScrim / 100) * 0.72));
+  }
+
+  function pollConfig() {
+    fetch('/api/overlay-config?_=' + Date.now(), { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('http ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (data && data.ok) applyConfig(data.config || data);
+      })
+      .catch(function () { })
+      .then(function () {
+        setTimeout(pollConfig, 2000);
+      });
+  }
+
+  function makeRow(index, item) {
+    var li = document.createElement('li');
+    li.className = 'row';
+
+    var idx = document.createElement('div');
+    idx.className = 'idx';
+    idx.textContent = String(index);
+
+    var main = document.createElement('div');
+    main.className = 'row-main';
+
+    var name = document.createElement('div');
+    name.className = 'row-name';
+    name.textContent = item.name || '未知歌曲';
+
+    var artist = document.createElement('div');
+    artist.className = 'row-artist';
+    artist.textContent = item.artists || '';
+
+    main.appendChild(name);
+    main.appendChild(artist);
+
+    var by = document.createElement('div');
+    by.className = 'row-by';
+    by.textContent = item.orderer ? ('by ' + item.orderer) : '';
+
+    li.appendChild(idx);
+    li.appendChild(main);
+    li.appendChild(by);
+    return li;
+  }
+
+  function renderDead() {
+    document.body.classList.add('stale');
+    setText(curName, '—');
+    setText(curArtist, '');
+    setText(curBy, '');
+    curBadge.hidden = true;
+    pendingList.textContent = '';
+    emptyEl.hidden = false;
+    setText(emptyEl, '等待 companion 数据…');
+    setText(pendingCount, '0 首');
+    setText(countBadge, '0 首待播');
+    moreEl.hidden = true;
+    setText(statusText, '数据断开 · 等待 companion');
+    statusDot.className = 'status-dot offline';
+    brandDot.className = 'brand-dot offline';
+    alertEl.hidden = true;
+  }
+
+  function render(state) {
+    if (!state || !state.ts || (Date.now() - state.ts > 8000)) {
+      renderDead();
+      return;
+    }
+
+    document.body.classList.remove('stale');
+    alertEl.hidden = true;
+
+    var pending = Array.isArray(state.pending) ? state.pending : [];
+    var current = state.current || null;
+
+    if (current) {
+      setText(curName, current.name || '未知歌曲');
+      setText(curArtist, current.artists || '');
+      var isD = current.badge === 'd';
+      curBadge.hidden = false;
+      curBadge.className = 'badge ' + (isD ? 'badge-d' : 'badge-s');
+      setText(curBadge, isD ? '点歌' : '歌单/手动');
+      setText(curBy, isD && current.orderer ? ('by ' + current.orderer) : '');
+    } else {
+      setText(curName, '空闲中');
+      setText(curArtist, '当前没有播放歌曲');
+      setText(curBy, '');
+      curBadge.hidden = true;
+    }
+
+    pendingList.textContent = '';
+    var shown = pending.slice(0, MAX_ROWS);
+    for (var i = 0; i < shown.length; i++) {
+      pendingList.appendChild(makeRow(i + 1, shown[i]));
+    }
+    emptyEl.hidden = pending.length > 0;
+    setText(emptyEl, '暂无待播点歌');
+
+    if (pending.length > shown.length) {
+      moreEl.hidden = false;
+      setText(moreEl, '还有 ' + (pending.length - shown.length) + ' 首待播');
+    } else {
+      moreEl.hidden = true;
+    }
+
+    var countText = pending.length + ' 首';
+    setText(pendingCount, countText);
+    setText(countBadge, pending.length + ' 首待播');
+
+    var parts = [];
+    if (state.bot === false) parts.push('bot 未连接');
+    if (state.ncm === false) parts.push('网易云未连接');
+    if (state.accepting === false) parts.push('接收点歌已暂停');
+    else parts.push('接收点歌中');
+    parts.push('待播 ' + pending.length + ' 首');
+    setText(statusText, parts.join(' · '));
+
+    var paused = state.accepting === false;
+    var offline = state.bot === false || state.ncm === false;
+    statusDot.className = 'status-dot' + (offline ? ' offline' : (paused ? ' paused' : ''));
+    brandDot.className = 'brand-dot' + (offline ? ' offline' : (paused ? ' paused' : ''));
+
+    if (state.alert) {
+      alertEl.hidden = false;
+      setText(alertEl, ALERTS[state.alert] || state.alert);
+    }
+  }
+
+  function demoState() {
+    return {
+      ts: Date.now(),
+      bot: true,
+      ncm: true,
+      accepting: true,
+      alert: null,
+      current: {
+        name: '夜空中最亮的星',
+        artists: '逃跑计划',
+        badge: 's',
+        orderer: ''
+      },
+      pending: [
+        { name: '晴天', artists: '周杰伦', orderer: '示例观众A' },
+        { name: '起风了', artists: '买辣椒也用券', orderer: '示例观众B' },
+        { name: 'Lemon', artists: '米津玄師', orderer: '示例观众C' },
+        { name: '光年之外', artists: '邓紫棋', orderer: '示例观众D' },
+        { name: '平凡之路', artists: '朴树', orderer: '示例观众E' },
+        { name: '这不是一个很短的歌名，用来检查长标题是否会正确省略', artists: '示例歌手', orderer: '示例观众F' }
+      ]
+    };
+  }
+
+  function renderDemo() {
+    render(demoState());
+    setText(statusText, '预览模式 · 示例数据');
+    statusDot.className = 'status-dot';
+    brandDot.className = 'brand-dot';
+    alertEl.hidden = true;
+  }
+
+  window.addEventListener('message', function (event) {
+    if (event.origin !== location.origin) return;
+    var data = event.data;
+    if (data && data.type === 'bilicnm-overlay-config' && data.config) {
+      applyConfig(data.config);
+    }
+  });
+
+  if (DEMO) {
+    renderDemo();
+    setInterval(renderDemo, 1000);
+  } else {
+    (function poll() {
+      fetch('/state?_=' + Date.now(), { cache: 'no-store' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('http ' + res.status);
+          return res.json();
+        })
+        .then(render)
+        .catch(function () { renderDead(); })
+        .then(function () {
+          setTimeout(poll, 1000);
+        });
+    })();
+  }
+
+  pollConfig();
+})();
+</script>
+<script>
+(function () {
+  if (!/[?&]debug=1/.test(location.search)) return;
+  setTimeout(function () {
+    function box(sel) {
+      var el = document.querySelector(sel);
+      if (!el) return null;
+      var r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, width: r.width, height: r.height };
+    }
+    var data = {
+      inner: { width: innerWidth, height: innerHeight },
+      dpr: devicePixelRatio,
+      scroll: { doc: document.documentElement.scrollWidth, body: document.body.scrollWidth },
+      card: box('.card'),
+      header: box('header'),
+      current: box('.current'),
+      queue: box('.queue'),
+      footer: box('footer'),
+      topBadge: box('.count'),
+      curBy: box('#curBy'),
+      empty: { hidden: document.getElementById('empty').hidden, display: getComputedStyle(document.getElementById('empty')).display },
+      rows: Array.prototype.map.call(document.querySelectorAll('#pendingList .row'), function (row) {
+        var r = row.getBoundingClientRect();
+        var by = row.querySelector('.row-by').getBoundingClientRect();
+        return { left: r.left, right: r.right, width: r.width, byRight: by.right };
+      }),
+      more: document.getElementById('more').hidden ? '' : document.getElementById('more').textContent,
+      pending: document.getElementById('pendingCount').textContent
+    };
+    var pre = document.createElement('pre');
+    pre.id = 'debugMetrics';
+    pre.hidden = true;
+    pre.textContent = JSON.stringify(data);
+    document.body.appendChild(pre);
+  }, 1200);
+})();
+</script>
+</body>
+</html>

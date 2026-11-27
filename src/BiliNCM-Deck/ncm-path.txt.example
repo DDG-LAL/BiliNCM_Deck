@@ -1,0 +1,4 @@
+# 网易云音乐 cloudmusic.exe 的完整路径（一行，UTF-8）
+# 复制为 ncm-path.txt；留空或删除时自动从运行进程/常见目录查找。
+# 示例：
+# D:\CloudMusic\cloudmusic.exe

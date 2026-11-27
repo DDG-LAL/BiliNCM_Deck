@@ -1,0 +1,30 @@
+BiliNCM Deck — 第三方组件与来源声明
+====================================
+
+1. BiliNCM-Bot（上游）
+   作者：Enkianssus
+   上游：https://github.com/Enkianssus/BiliNCM-Bot
+   基线版本：1.0.1（源码最后提交 15daf60，2026-05-11）
+   许可：MIT License
+         （依据上游 README「许可协议」一节；上游仓库未提供 LICENSE 文件）
+   说明：BiliNCM Deck 基于该源码 fork，并对队列、浮层、设置、
+         登录和启动流程做了修改。上游原版与本项目相互独立。
+
+2. BiliNCM Deck
+   作者：DDG-LAL
+   许可：MIT License
+   说明：原 BiliNCM_Companion 的队列、浮层、设置、启动逻辑已移植到
+         本项目；reference/ 目录保留旧脚本作对照。
+
+3. 第三方库
+   - NAudio 2.2.1：MIT License，https://github.com/naudio/NAudio
+   - Newtonsoft.Json 13.0.4：MIT License，https://github.com/JamesNK/Newtonsoft.Json
+   - 上游 5555 前端构建资源已从本项目移除。
+
+免责声明
+--------
+- 本项目与哔哩哔哩（Bilibili）、网易云音乐（NetEase Cloud Music）无任何隶属或合作关系。
+- 本项目不包含网易云音乐客户端，使用者需自行安装并遵守其服务条款。
+- 本项目不收集、不上传任何用户数据；所有本地服务仅监听 127.0.0.1。
+- 使用本项目可能违反相关平台的服务条款，风险由使用者自行承担。
+- 如权利人认为本项目的分发方式不妥，请在仓库提交 Issue，我们将立即移除相关内容。
