@@ -63,6 +63,8 @@
   let curState = null;
   let curName = '';
   let curArtists = '';
+  let curDuration = 0;
+  let curPosition = null;
   try {
     const u = m && typeof m.U === 'function' ? m.U() : null;
     if (u && u.data && u.data.id != null) {
@@ -71,11 +73,32 @@
       if (Array.isArray(u.data.artists)) {
         curArtists = u.data.artists.map(a => a && a.name).filter(Boolean).join('/');
       }
+      const durationValue = u.data.dt != null ? u.data.dt : u.data.duration;
+      const durationNumber = Number(durationValue);
+      if (Number.isFinite(durationNumber) && durationNumber > 0) curDuration = durationNumber;
       if (u.from) {
         if (u.from.id != null) curWrapper = String(u.from.id);
         if (u.from.startlogtime != null) curStart = String(u.from.startlogtime);
       }
       curState = u.state;
+      const positionCandidates = [
+        u.position, u.currentTime, u.playedTime, u.progress,
+        u.data.position, u.data.currentTime, u.data.playedTime, u.data.progress,
+        m && m.position, m && m.currentTime, m && m.playedTime, m && m.progress
+      ];
+      for (let i = 0; i < positionCandidates.length; i++) {
+        const positionNumber = Number(positionCandidates[i]);
+        if (Number.isFinite(positionNumber) && positionNumber >= 0) {
+          curPosition = positionNumber;
+          break;
+        }
+      }
+      if (curPosition == null) {
+        try {
+          const audio = document.querySelector('audio');
+          if (audio && Number.isFinite(Number(audio.currentTime))) curPosition = Number(audio.currentTime);
+        } catch (e) { }
+      }
     }
   } catch (e) { }
   const stId = st.playing && (st.playing.resourceTrackId || st.playing.onlineResourceId);
@@ -96,7 +119,9 @@
     name: curName,
     artists: curArtists,
     start: curStart,
-    state: curState
+    state: curState,
+    duration: curDuration,
+    position: curPosition
   } : null;
   return JSON.stringify({
     ok: true,

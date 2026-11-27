@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>歌词浮层 · BiliNCM Deck</title>
+<style>
+  :root{
+    --font:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+    --pure-color:#ffffff;
+    --lyric-font-size:48px;
+    --slot-h:20vh;
+    --text:#f4f6fa;
+    --sub:rgba(244,246,250,.62);
+    --accent:#22d3ee;
+    --tr:rgba(244,246,250,.62);
+    --line:rgba(255,255,255,.12);
+    --bg:linear-gradient(160deg,rgba(8,11,17,.94),rgba(15,20,31,.84));
+    --radius:18px;
+    --shadow:0 18px 55px rgba(0,0,0,.38);
+    --blur:blur(12px);
+    --text-shadow:0 2px 10px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:transparent;overflow:hidden}
+  body{
+    font-family:var(--font);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+  }
+  .stage{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    backdrop-filter:var(--blur);
+    -webkit-backdrop-filter:var(--blur);
+  }
+  .viewport{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+    mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  }
+  body[data-lines="1"] .viewport{
+    -webkit-mask-image:none;
+    mask-image:none;
+  }
+  .track{
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    will-change:transform;
+    transition:transform .52s cubic-bezier(.22,.61,.36,1);
+  }
+  .line{
+    position:absolute;
+    left:0;
+    right:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    height:var(--slot-h);
+    padding:0 4vw;
+    text-align:center;
+    opacity:.28;
+    transform:scale(.95);
+    transition:opacity .35s,transform .35s,color .35s;
+  }
+  .line .orig{
+    max-width:100%;
+    max-height:2.35em;
+    overflow:hidden;
+    color:var(--text);
+    font-size:var(--lyric-font-size);
+    font-weight:650;
+    line-height:1.14;
+    letter-spacing:.01em;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    text-shadow:var(--text-shadow);
+  }
+  .line .tr{
+    display:none;
+    max-width:100%;
+    margin-top:.18em;
+    overflow:hidden;
+    color:var(--tr);
+    font-size:calc(var(--lyric-font-size) * .52);
+    font-weight:500;
+    line-height:1.25;
+    letter-spacing:.01em;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+  }
+  body.show-translation .line .tr{display:block}
+  body.show-translation .line .orig{font-size:calc(var(--lyric-font-size) * .88)}
+  .line.current{opacity:1;transform:scale(1.035)}
+  .line.current .orig{color:var(--accent)}
+  .line.near{opacity:.52;transform:scale(.98)}
+  .line.far{opacity:.26}
+  .line.long .orig{font-size:calc(var(--lyric-font-size) * .78)}
+  .line.xlong .orig{font-size:calc(var(--lyric-font-size) * .64)}
+  .state-msg{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:5vw;
+    text-align:center;
+    color:var(--text);
+    font-size:clamp(18px,3.2vw,42px);
+    font-weight:600;
+    opacity:.78;
+    text-shadow:var(--text-shadow);
+  }
+  .static-block{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:4vh 4vw;
+    overflow:hidden;
+    text-align:center;
+    color:var(--text);
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    line-height:1.55;
+    text-shadow:var(--text-shadow);
+  }
+  .static-line{display:block;max-width:100%;margin:.08em 0}
+  .static-line .tr{
+    display:block;
+    margin-top:.12em;
+    color:var(--tr);
+    font-size:.52em;
+    line-height:1.3;
+    opacity:.82;
+  }
+  .debug{
+    position:absolute;
+    right:1.2vw;
+    bottom:1.2vh;
+    max-width:48vw;
+    padding:7px 9px;
+    border-radius:7px;
+    background:rgba(0,0,0,.6);
+    color:#d8f7ff;
+    font:11px/1.45 Consolas,"Courier New",monospace;
+    white-space:pre-wrap;
+    z-index:9;
+  }
+  [hidden]{display:none!important}
+
+  body[data-skin="default"]{ }
+  body[data-skin="neon"]{
+    --bg:linear-gradient(160deg,rgba(6,10,20,.94),rgba(14,6,26,.9));
+    --line:rgba(34,211,238,.24);
+    --text:#eafcff;
+    --sub:#93a9bd;
+    --accent:#22d3ee;
+    --tr:rgba(234,252,255,.62);
+    --shadow:0 0 0 1px rgba(34,211,238,.12),0 18px 55px rgba(0,0,0,.6);
+  }
+  body[data-skin="mist"]{
+    --bg:linear-gradient(160deg,rgba(232,241,251,.95),rgba(207,222,240,.93));
+    --line:rgba(30,64,110,.18);
+    --text:#152238;
+    --sub:#4a5f7a;
+    --accent:#4338ca;
+    --tr:rgba(21,34,56,.62);
+    --shadow:0 16px 46px rgba(30,64,110,.22);
+    --text-shadow:none;
+  }
+  body[data-skin="sakura"]{
+    --bg:linear-gradient(160deg,rgba(255,224,240,.96),rgba(255,194,221,.94));
+    --line:rgba(190,24,93,.20);
+    --text:#47142d;
+    --sub:#8a4766;
+    --accent:#d61f74;
+    --tr:rgba(71,20,45,.62);
+    --shadow:0 16px 46px rgba(190,24,93,.24);
+    --text-shadow:none;
+  }
+  body[data-skin="pixel"]{
+    --font:Consolas,"Courier New",monospace;
+    --bg:#10141f;
+    --line:rgba(163,230,53,.28);
+    --text:#e5e7eb;
+    --sub:#9ca3af;
+    --accent:#a3e635;
+    --tr:rgba(229,231,235,.62);
+    --radius:0px;
+    --shadow:6px 6px 0 rgba(0,0,0,.35);
+    --blur:none;
+  }
+  body[data-skin="pixel"] .line .orig{letter-spacing:.08em}
+  body[data-skin="lyric"]{
+    --bg:linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.04));
+    --line:transparent;
+    --text:#ffffff;
+    --sub:rgba(255,255,255,.72);
+    --accent:#7dd3fc;
+    --tr:rgba(255,255,255,.68);
+    --radius:0px;
+    --shadow:none;
+    --blur:none;
+    --text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95);
+  }
+  body[data-skin="pure"]{
+    --bg:transparent;
+    --line:transparent;
+    --text:var(--pure-color);
+    --sub:rgba(255,255,255,.7);
+    --accent:var(--pure-color);
+    --tr:var(--pure-color);
+    --radius:0px;
+    --shadow:none;
+    --blur:none;
+    --text-shadow:0 2px 12px rgba(0,0,0,.55);
+  }
+  body[data-skin="pure"] .stage,
+  body[data-skin="lyric"] .stage{
+    border:none;
+    border-radius:0;
+    box-shadow:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+  body[data-skin="pure"] .line .orig,
+  body[data-skin="pure"] .line.current .orig{
+    color:var(--pure-color);
+  }
+  body[data-skin="pure"] .line .tr{color:var(--pure-color);opacity:.72}
+  body[data-skin="lyric"] .line .tr{color:var(--tr)}
+  body[data-skin="mist"] .line .orig,
+  body[data-skin="mist"] .line.current .orig,
+  body[data-skin="sakura"] .line .orig,
+  body[data-skin="sakura"] .line.current .orig{
+    text-shadow:none;
+  }
+</style>
+</head>
+<body data-skin="default" data-lines="5">
+<div class="stage" id="stage">
+  <div class="viewport" id="viewport">
+    <div class="track" id="track"></div>
+    <div class="state-msg" id="stateMsg">歌词加载中…</div>
+    <div class="static-block" id="staticBlock" hidden></div>
+  </div>
+  <div class="debug" id="debug" hidden></div>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var stage = document.getElementById('stage');
+  var viewport = document.getElementById('viewport');
+  var track = document.getElementById('track');
+  var stateMsg = document.getElementById('stateMsg');
+  var staticBlock = document.getElementById('staticBlock');
+  var debugEl = document.getElementById('debug');
+  var query = new URLSearchParams(location.search);
+  var demo = query.get('demo') === '1';
+  var debug = query.get('debug') === '1';
+
+  var DEFAULT_CONFIG = {
+    lineCount: 5,
+    skin: 'default',
+    translation: false,
+    forceStatic: false,
+    textColor: '#ffffff'
+  };
+  var ALLOWED_LINES = [1, 3, 5, 7];
+  var ALLOWED_SKINS = ['default', 'neon', 'mist', 'sakura', 'pixel', 'lyric', 'pure'];
+
+  var config = Object.assign({}, DEFAULT_CONFIG);
+  var data = null;
+  var basePosition = 0;
+  var receivedAt = 0;
+  var playing = false;
+  var pollBusy = false;
+  var lastRenderKey = '';
+  var lineEls = [];
+  var lastIndex = -2;
+  var lastConfigJson = '';
+  var queryOverrides = readQueryOverrides();
+  var lastTickAt = performance.now();
+
+  function readQueryOverrides() {
+    var result = {};
+    var lines = parseInt(query.get('lines') || '', 10);
+    if (ALLOWED_LINES.indexOf(lines) >= 0) result.lineCount = lines;
+    var skin = query.get('skin');
+    if (skin && ALLOWED_SKINS.indexOf(skin) >= 0) result.skin = skin;
+    var tr = query.get('translation');
+    if (tr === '1' || tr === 'true') result.translation = true;
+    if (tr === '0' || tr === 'false') result.translation = false;
+    var st = query.get('static');
+    if (st === '1' || st === 'true') result.forceStatic = true;
+    if (st === '0' || st === 'false') result.forceStatic = false;
+    var color = query.get('textColor');
+    if (color && /^#[0-9a-fA-F]{6}$/.test(color)) result.textColor = color;
+    return result;
+  }
+
+  function normalizeConfig(raw) {
+    var next = Object.assign({}, DEFAULT_CONFIG, raw || {});
+    next.lineCount = ALLOWED_LINES.indexOf(Number(next.lineCount)) >= 0 ? Number(next.lineCount) : 5;
+    next.skin = ALLOWED_SKINS.indexOf(String(next.skin)) >= 0 ? String(next.skin) : 'default';
+    next.translation = !!next.translation;
+    next.forceStatic = !!next.forceStatic;
+    next.textColor = /^#[0-9a-fA-F]{6}$/.test(String(next.textColor || '')) ? String(next.textColor) : '#ffffff';
+    return next;
+  }
+
+  function applyConfig(raw, force) {
+    var next = normalizeConfig(raw);
+    Object.keys(queryOverrides).forEach(function (key) { next[key] = queryOverrides[key]; });
+    var json = JSON.stringify(next);
+    if (!force && json === lastConfigJson) return;
+    config = next;
+    lastConfigJson = json;
+    document.body.setAttribute('data-skin', config.skin);
+    document.body.setAttribute('data-lines', String(config.lineCount));
+    document.body.classList.toggle('show-translation', config.translation);
+    stage.style.setProperty('--pure-color', config.textColor);
+    stage.style.setProperty('--lines', String(config.lineCount));
+    lastRenderKey = '';
+    lastIndex = -2;
+    layout();
+  }
+
+  function getPosition() {
+    if (!playing) return basePosition;
+    return basePosition + Math.max(0, (performance.now() - receivedAt) / 1000);
+  }
+
+  function findIndex(lines, position) {
+    var index = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (Number(lines[i].time) <= position + 0.04) index = i;
+      else break;
+    }
+    return index;
+  }
+
+  function showMessage(text) {
+    track.hidden = true;
+    staticBlock.hidden = true;
+    stateMsg.hidden = false;
+    stateMsg.textContent = text;
+  }
+
+  function showTrack() {
+    track.hidden = false;
+    staticBlock.hidden = true;
+    stateMsg.hidden = true;
+  }
+
+  function showStatic() {
+    track.hidden = true;
+    stateMsg.hidden = true;
+    staticBlock.hidden = false;
+    staticBlock.innerHTML = '';
+
+    var items = (data && data.lines && data.lines.length)
+      ? data.lines
+      : String((data && data.plainText) || '').split('\n').map(function (text) { return { text: text, translation: '' }; });
+
+    var lineCount = 0;
+    items.forEach(function (item) {
+      var text = String(item.text || '').trim();
+      if (!text) return;
+      lineCount++;
+      var line = document.createElement('div');
+      line.className = 'static-line';
+      var orig = document.createElement('span');
+      orig.className = 'orig';
+      orig.textContent = text;
+      line.appendChild(orig);
+      if (config.translation && item.translation) {
+        var tr = document.createElement('span');
+        tr.className = 'tr';
+        tr.textContent = item.translation;
+        line.appendChild(tr);
+      }
+      staticBlock.appendChild(line);
+    });
+
+    if (lineCount === 0) {
+      staticBlock.textContent = '暂无歌词';
+      return;
+    }
+
+    var size = Math.max(9, Math.min(
+      viewport.clientHeight / (lineCount * (config.translation ? 2.1 : 1.7)),
+      viewport.clientWidth / 15,
+      30
+    ));
+    staticBlock.style.fontSize = size + 'px';
+  }
+
+  function buildTrack(lines) {
+    track.innerHTML = '';
+    lineEls = [];
+    var slot = viewport.clientHeight / config.lineCount;
+    stage.style.setProperty('--slot-h', slot + 'px');
+
+    var baseSize = Math.max(12, Math.min(
+      slot * 0.38,
+      viewport.clientWidth * 0.075,
+      viewport.clientHeight * 0.16
+    ));
+    stage.style.setProperty('--lyric-font-size', baseSize + 'px');
+
+    for (var i = 0; i < lines.length; i++) {
+      var item = lines[i];
+      var lineEl = document.createElement('div');
+      lineEl.className = 'line';
+      lineEl.style.top = (i * slot) + 'px';
+      lineEl.style.height = slot + 'px';
+
+      var orig = document.createElement('div');
+      orig.className = 'orig';
+      orig.textContent = item.text || '';
+      lineEl.appendChild(orig);
+
+      var tr = document.createElement('div');
+      tr.className = 'tr';
+      tr.textContent = item.translation || '';
+      lineEl.appendChild(tr);
+
+      var length = String(item.text || '').length;
+      if (length > 34) lineEl.classList.add('long');
+      if (length > 56) lineEl.classList.add('xlong');
+
+      track.appendChild(lineEl);
+      lineEls.push(lineEl);
+    }
+
+    lastIndex = -2;
+  }
+
+  function updateTrack() {
+    if (!data || !data.hasTimeline || !data.lines || data.lines.length === 0) return;
+    if (config.forceStatic) return;
+
+    var position = getPosition();
+    var index = findIndex(data.lines, position);
+    if (index !== lastIndex) {
+      lastIndex = index;
+      for (var i = 0; i < lineEls.length; i++) {
+        var distance = Math.abs(i - index);
+        lineEls[i].classList.toggle('current', i === index);
+        lineEls[i].classList.toggle('near', distance === 1);
+        lineEls[i].classList.toggle('far', distance > 1);
+      }
+    }
+
+    var slot = viewport.clientHeight / config.lineCount;
+    var middle = (config.lineCount - 1) / 2;
+    var offset = viewport.clientHeight / 2 - (index + 0.5) * slot;
+    track.style.transform = 'translateY(' + offset + 'px)';
+  }
+
+  function applyData() {
+    if (!data) return;
+    if (data.config) applyConfig(data.config);
+
+    if (debug) {
+      debugEl.hidden = false;
+      debugEl.textContent =
+        'source: ' + (data.source || '-') + '\n' +
+        'state: ' + (data.state || '-') + '\n' +
+        'playing: ' + !!data.playing + '\n' +
+        'position: ' + Number(data.position || 0).toFixed(2) + 's\n' +
+        'start: ' + (data.start || 0) + '\n' +
+        'timeline: ' + !!data.hasTimeline + '\n' +
+        'noLyrics: ' + !!data.noLyrics + '\n' +
+        'lines: ' + ((data.lines && data.lines.length) || 0) + '\n' +
+        'error: ' + (data.error || '-');
+    }
+
+    if (data.noSong) {
+      showMessage('网易云未连接');
+      return;
+    }
+
+    if (data.noLyrics && (!data.plainText || !data.lines || data.lines.length === 0)) {
+      showMessage(data.error ? '歌词加载失败' : '暂无歌词');
+      return;
+    }
+
+    var staticMode = !!config.forceStatic || !data.hasTimeline || !data.lines || data.lines.length === 0;
+    if (staticMode) {
+      if (!data.plainText && (!data.lines || data.lines.length === 0)) {
+        showMessage('暂无歌词');
+        return;
+      }
+      showStatic();
+      return;
+    }
+
+    var key = String(data.song && data.song.id) + '|' + data.source + '|' + data.lines.length + '|' + String(config.translation);
+    if (key !== lastRenderKey) {
+      lastRenderKey = key;
+      buildTrack(data.lines);
+    }
+
+    showTrack();
+    updateTrack();
+  }
+
+  function ingest(next) {
+    if (!next) return;
+    data = next;
+    basePosition = Number(next.position) || 0;
+    receivedAt = performance.now();
+    playing = !!next.playing;
+    applyData();
+  }
+
+  async function loadConfig() {
+    try {
+      var res = await fetch('/api/lyrics/config?_=' + Date.now(), { cache: 'no-store' });
+      var payload = await res.json();
+      if (payload && payload.ok) applyConfig(payload.config, true);
+    } catch (err) {
+      applyConfig(DEFAULT_CONFIG, true);
+    }
+  }
+
+  async function refresh() {
+    if (demo || pollBusy) return;
+    pollBusy = true;
+    try {
+      var res = await fetch('/api/lyrics/state?_=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('http_' + res.status);
+      var payload = await res.json();
+      if (!payload.ok) throw new Error(payload.error || 'state_failed');
+      ingest(payload);
+    } catch (err) {
+      if (!data) showMessage('歌词加载失败');
+    } finally {
+      pollBusy = false;
+    }
+  }
+
+  function demoState() {
+    var texts = [
+      '夜曲', '一群嗜血的蚂蚁 被腐肉所吸引', '我面无表情 看孤独的风景',
+      '失去你 爱恨开始分明', '失去你 还有什么事好关心', '当鸽子不再象征和平',
+      '我终于被提醒 广场上喂食的是秃鹰', '我用漂亮的押韵', '形容被掠夺一空的爱情',
+      '啊 乌云开始遮蔽 夜色不干净', '公园里 葬礼的回音 在漫天飞行'
+    ];
+    var lines = texts.map(function (text, i) {
+      return { time: i * 4, text: text, translation: i === 1 ? '示例翻译：只是为了检查小字排版' : '' };
+    });
+    return {
+      ok: true,
+      noSong: false,
+      song: { id: 'demo', name: '夜曲', artists: '周杰伦', duration: lines.length * 4 },
+      playing: false,
+      position: 0,
+      state: 'demo',
+      start: 0,
+      noLyrics: false,
+      hasTimeline: true,
+      source: 'demo',
+      plainText: texts.join('\n'),
+      lines: lines,
+      config: config
+    };
+  }
+
+  function tick(now) {
+    var dt = Math.max(0, (now - lastTickAt) / 1000);
+    lastTickAt = now;
+    if (demo && data && data.hasTimeline && !config.forceStatic) {
+      basePosition += dt;
+      if (basePosition > data.song.duration) basePosition = 0;
+      data.position = basePosition;
+      updateTrack();
+    } else if (data) {
+      updateTrack();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function layout() {
+    if (!data) return;
+    if (track.hidden === false && data.hasTimeline && !config.forceStatic) {
+      lastRenderKey = '';
+      applyData();
+    } else {
+      applyData();
+    }
+  }
+
+  window.addEventListener('resize', function () {
+    lastRenderKey = '';
+    if (data) applyData();
+  });
+
+  if (demo) {
+    applyConfig(DEFAULT_CONFIG, true);
+    ingest(demoState());
+  } else {
+    loadConfig().then(function () {
+      applyData();
+      refresh();
+      setInterval(refresh, 1000);
+    });
+  }
+
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

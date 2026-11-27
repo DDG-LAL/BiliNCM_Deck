@@ -16,6 +16,7 @@
 src/BiliNCM-Deck/           主程序
 src/BiliNCM-Deck/web/deck/  5566 浮层与设置页
 src/BiliNCM-Deck/web/ncm/   网易云 CDP 操作脚本
+src/BiliNCM-Deck/LyricsService.cs  歌词抓取、LRC 解析、外部同步源与播放位置
 docs/                       架构、决策、交接、回归与发布记录
 packaging/                  便携包启动/停止脚本和说明
 reference/                  旧 Companion/Overlay/Launcher 脚本，仅作移植参考
@@ -40,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 发布前注意：
 
 - `tools\publish.ps1` 会删除并重建 `publish\`；先备份 `config.json`、`overlay-config.json`、`overlay-assets\` 和日志
-- GitHub Release 的 zip 不应包含 `config.json`、`overlay-config.json`、`ncm-path.txt`、`overlay-assets\`、`deck.log`、`danmaku.log`、`crash.log` 或 PDB
+- GitHub Release 的 zip 不应包含 `config.json`、`overlay-config.json`、`lyrics-config.json`、`ncm-path.txt`、`overlay-assets\`、`deck.log`、`danmaku.log`、`crash.log` 或 PDB
 - 版本号在 `src/BiliNCM-Deck/BiliNCM-Deck.csproj` 的 `<Version>` 中维护
 - 发布后确认 `/health` 返回的 `version` 与 tag 一致
 - 发布 zip 建议附带 SHA256 校验文件
@@ -52,6 +53,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 - `CompanionQueueEngine.cs` 维护 bot 队列与 NCM 队列的状态机
 - `NcmCdp.cs` 通过网易云 CDP 端口 `9222` 操作播放列表
 - `DanmakuLog.cs` / `DeckLog.cs` 分别记录全量弹幕和运行日志
+- `LyricsService.cs` 负责网易云/LRCLIB 歌词、LRC 解析和播放位置计算
+- `web/deck/BiliNCM-Lyrics.html` 是独立歌词浮层，播放位置随网易云状态校正
 - B 站弹幕 WebSocket 支持 Brotli 批量包，递归解析内层包和多条 JSON
 
 ## 已移除的旧内容
@@ -74,7 +77,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 
 - [Phase 2/3 回归清单](REGRESSION.md)
 - [Phase 2/3 当前状态](PHASE2-PENDING.md)
-- [v1.0.0 发布说明](RELEASE-v1.0.0.md)
+- [v1.1.0 发布说明](RELEASE-v1.1.0.md)
 
 ## 已知限制
 

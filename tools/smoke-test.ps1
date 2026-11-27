@@ -34,6 +34,13 @@ try {
     '--- 5566 settings ---'
     $s = Invoke-WebRequest -Uri 'http://127.0.0.1:5566/settings' -UseBasicParsing -TimeoutSec 5
     'status=' + $s.StatusCode + ' bytes=' + $s.RawContentLength
+    '--- 5566 lyrics ---'
+    $lyricsPage = Invoke-WebRequest -Uri 'http://127.0.0.1:5566/lyrics' -UseBasicParsing -TimeoutSec 5
+    'status=' + $lyricsPage.StatusCode + ' bytes=' + $lyricsPage.RawContentLength
+    $lyricsCfg = (Invoke-WebRequest -Uri 'http://127.0.0.1:5566/api/lyrics/config' -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
+    'config_ok={0} lines={1} skin={2}' -f $lyricsCfg.ok, $lyricsCfg.config.lineCount, $lyricsCfg.config.skin
+    $lyricsState = (Invoke-WebRequest -Uri 'http://127.0.0.1:5566/api/lyrics/state' -UseBasicParsing -TimeoutSec 10).Content | ConvertFrom-Json
+    'state_ok={0} noSong={1} lines={2}' -f $lyricsState.ok, $lyricsState.noSong, @($lyricsState.lines).Count
     '--- 5566 status ---'
     (Invoke-WebRequest -Uri 'http://127.0.0.1:5566/state' -UseBasicParsing -TimeoutSec 5).Content
     '--- 5566 NCM bridge ---'

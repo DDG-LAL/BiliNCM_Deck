@@ -468,6 +468,12 @@ namespace BiliNetEaseIntegratedApp
             return true;
         }
 
+        internal static CompanionQueueEngine.SongView? GetCurrentSongView()
+        {
+            try { return _companionEngine?.Snapshot().current; }
+            catch { return null; }
+        }
+
         internal static object BuildDeckState()
         {
             var engine = _companionEngine;

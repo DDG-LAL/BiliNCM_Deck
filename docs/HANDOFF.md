@@ -23,7 +23,7 @@ BiliNCM-Deck.exe
 ## 当前基线
 
 - 项目目录：仓库根目录（clone 后即可）
-- 版本：`1.0.0`（首个公开版本，提交以 `git log -1` 为准）
+- 版本：`1.1.0`（歌词浮层版本，提交以 `git log -1` 为准）
 - 工作区：Phase 2/3 核心回归已完成；重启 Deck 不保留待播列表为已知限制
 - GitHub：`https://github.com/DDG-LAL/BiliNCM_Deck`
 - 便携包：`publish\`（self-contained 单文件）
@@ -84,6 +84,11 @@ BiliNCM-Deck.exe
 - 关闭页面不会退出，程序在托盘后台运行
 - B站弹幕包解析兼容压缩包内多个内层包和单包内多条 JSON；同时弹幕不再丢失
 - `danmaku.log` 记录全部 `DANMU_MSG`（本地时间、B站时间、UID、用户名、房管/舰长/粉丝牌、原文）
+- 歌词浮层 `/lyrics`：
+  - 优先使用网易云带时间轴歌词；无时间轴时尝试 LRCLIB 外部同步源，失败后按时长估算
+  - 支持 1/3/5/7 行、现有 6 套皮肤 + 纯歌词透明皮肤、翻译开关、纯歌词字色
+  - 播放位置跟随网易云 `start/state/position`，前端只做采样间插值
+  - 可强制静态显示作为回退
 - 同一首歌被多人重复点歌时，撤回/移除只删除自己的 bot 队列条目；只有最后一条请求消失时才删除 NCM 副本
 - `置顶` / `置顶点歌` 使用 NCM `current+1` 实际移动，连续置顶以最后一次排最前
 - `live_status` 采用初始读取 + WebSocket LIVE/PREPARING 事件 + 60 秒低频轮询刷新
@@ -103,6 +108,8 @@ src/BiliNCM-Deck/NcmCdp.cs                   CDP 目标发现 / state / add / mo
 src/BiliNCM-Deck/DeckServer.cs               5566 HTTP、浮层、设置、背景图处理
 src/BiliNCM-Deck/DeckLog.cs                  持久化 deck.log、轮转与脱敏
 src/BiliNCM-Deck/DanmakuLog.cs               全部 DANMU_MSG 的 danmaku.log
+src/BiliNCM-Deck/LyricsService.cs            网易云/LRCLIB 歌词、LRC 解析与播放位置
+src/BiliNCM-Deck/web/deck/BiliNCM-Lyrics.html  歌词浮层页面
 src/BiliNCM-Deck/TrayHost.cs                 托盘图标与退出菜单
 src/BiliNCM-Deck/Assets/BiliNCM-Deck.ico     exe / 托盘应用图标
 src/BiliNCM-Deck/web/deck/                   5566 浮层与设置页

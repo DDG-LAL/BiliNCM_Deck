@@ -32,7 +32,11 @@ namespace BiliNetEaseIntegratedApp
         private readonly string _deckDir;
         private readonly string _assetsDir;
         private readonly string _configFile;
+        private readonly string _lyricsConfigFile;
         private readonly object _configLock = new object();
+        private readonly object _lyricsConfigLock = new object();
+        private readonly LyricsService _lyrics = new LyricsService();
+        private readonly LyricsPlayback _lyricsPlayback = new LyricsPlayback();
         private bool _started;
 
         private static readonly Regex AssetName = new Regex(
@@ -58,6 +62,7 @@ namespace BiliNetEaseIntegratedApp
             _deckDir = Path.Combine(_baseDir, "web", "deck");
             _assetsDir = Path.Combine(_baseDir, "overlay-assets");
             _configFile = Path.Combine(_baseDir, "overlay-config.json");
+            _lyricsConfigFile = Path.Combine(_baseDir, "lyrics-config.json");
             Directory.CreateDirectory(_assetsDir);
         }
 
@@ -120,6 +125,85 @@ namespace BiliNetEaseIntegratedApp
                         return;
                     }
                     SendJson(res, ncm);
+                    return;
+                }
+
+                if (path == "/api/lyrics/config")
+                {
+                    if (req.HttpMethod == "GET")
+                    {
+                        SendJson(res, new { ok = true, config = ReadLyricsConfig() });
+                        return;
+                    }
+
+                    if (req.HttpMethod == "POST")
+                    {
+                        if (!IsLocalOrigin(req)) { SendError(res, 403, "origin_denied"); return; }
+                        var body = await ReadBodyAsync(req, MaxConfigBytes);
+                        if (body == null) { SendError(res, 413, "too_large"); return; }
+                        LyricsConfig? incoming;
+                        try { incoming = JsonConvert.DeserializeObject<LyricsConfig>(Encoding.UTF8.GetString(body)); }
+                        catch { SendError(res, 400, "invalid_json"); return; }
+                        var cfg = (incoming ?? new LyricsConfig()).Normalize();
+                        WriteLyricsConfig(cfg);
+                        SendJson(res, new { ok = true, config = cfg });
+                        return;
+                    }
+
+                    SendError(res, 405, "method_not_allowed");
+                    return;
+                }
+
+                if (path == "/api/lyrics/state")
+                {
+                    var cfg = ReadLyricsConfig();
+                    var current = Program.GetCurrentSongView();
+                    if (current == null || string.IsNullOrWhiteSpace(current.id))
+                    {
+                        SendJson(res, new
+                        {
+                            ok = true,
+                            noSong = true,
+                            playing = false,
+                            position = 0.0,
+                            serverTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                            noLyrics = true,
+                            hasTimeline = false,
+                            source = "none",
+                            plainText = "",
+                            lines = Array.Empty<LyricsLine>(),
+                            config = cfg
+                        });
+                        return;
+                    }
+
+                    long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    var (playing, position) = _lyricsPlayback.Resolve(current, now);
+                    var lyrics = await _lyrics.GetAsync(current.id, current.name, current.artists, current.duration);
+                    SendJson(res, new
+                    {
+                        ok = true,
+                        noSong = false,
+                        song = new
+                        {
+                            id = current.id,
+                            name = current.name,
+                            artists = current.artists,
+                            duration = current.duration > 0 ? current.duration / 1000.0 : 0
+                        },
+                        playing,
+                        position,
+                        serverTime = now,
+                        state = current.state,
+                        start = current.start,
+                        noLyrics = lyrics.noLyrics,
+                        hasTimeline = lyrics.hasTimeline,
+                        source = lyrics.source,
+                        plainText = lyrics.plainText,
+                        lines = lyrics.lines,
+                        error = lyrics.error,
+                        config = cfg
+                    });
                     return;
                 }
 
@@ -217,6 +301,12 @@ namespace BiliNetEaseIntegratedApp
                     return;
                 }
 
+                if (path == "/lyrics" || path == "/lyrics/")
+                {
+                    SendFile(res, Path.Combine(_deckDir, "BiliNCM-Lyrics.html"), "text/html; charset=utf-8");
+                    return;
+                }
+
                 if (path == "/favicon.ico")
                 {
                     res.StatusCode = 204;
@@ -266,6 +356,31 @@ namespace BiliNetEaseIntegratedApp
                 return File.Exists(Path.Combine(_assetsDir, file));
             }
             catch { return false; }
+        }
+
+        private LyricsConfig ReadLyricsConfig()
+        {
+            lock (_lyricsConfigLock)
+            {
+                try
+                {
+                    if (File.Exists(_lyricsConfigFile))
+                    {
+                        var parsed = JsonConvert.DeserializeObject<LyricsConfig>(File.ReadAllText(_lyricsConfigFile));
+                        return (parsed ?? new LyricsConfig()).Normalize();
+                    }
+                }
+                catch { }
+                return new LyricsConfig();
+            }
+        }
+
+        private void WriteLyricsConfig(LyricsConfig config)
+        {
+            lock (_lyricsConfigLock)
+            {
+                File.WriteAllText(_lyricsConfigFile, JsonConvert.SerializeObject(config.Normalize(), Formatting.Indented));
+            }
         }
 
         internal static bool IsLocalOrigin(HttpListenerRequest req)

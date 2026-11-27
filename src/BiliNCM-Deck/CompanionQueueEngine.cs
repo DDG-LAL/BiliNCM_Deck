@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +33,10 @@ namespace BiliNetEaseIntegratedApp
             public string artists { get; set; } = "";
             public string badge { get; set; } = "manual";
             public string orderer { get; set; } = "";
+            public long start { get; set; }
+            public long duration { get; set; }
+            public string state { get; set; } = "";
+            public double? position { get; set; }
         }
 
         internal sealed class StateView
@@ -72,6 +77,10 @@ namespace BiliNetEaseIntegratedApp
             public string Qid = "";
             public string Name = "";
             public string Artists = "";
+            public long Start;
+            public long Duration;
+            public string State = "";
+            public double? Position;
         }
 
         private sealed class NcmSnapshot
@@ -967,6 +976,10 @@ namespace BiliNetEaseIntegratedApp
                         Id = id,
                         Name = GetString(current, "name"),
                         Artists = GetString(current, "artists"),
+                        Start = GetLong(current, "start", 0),
+                        Duration = GetLong(current, "duration", 0),
+                        State = GetString(current, "state"),
+                        Position = GetDouble(current, "position"),
                         Qid = snap.CurrentWrapper
                     };
                 }
@@ -1024,7 +1037,11 @@ namespace BiliNetEaseIntegratedApp
                         name = string.IsNullOrWhiteSpace(ncm.Current.Name) ? (k?.Name ?? "") : ncm.Current.Name,
                         artists = string.IsNullOrWhiteSpace(ncm.Current.Artists) ? (k?.Artists ?? "") : ncm.Current.Artists,
                         badge = isD ? "d" : "manual",
-                        orderer = isD ? (k?.OrderedBy ?? "") : ""
+                        orderer = isD ? (k?.OrderedBy ?? "") : "",
+                        start = ncm.Current.Start,
+                        duration = ncm.Current.Duration,
+                        state = ncm.Current.State,
+                        position = ncm.Current.Position
                     };
                 }
 
@@ -1096,6 +1113,30 @@ namespace BiliNetEaseIntegratedApp
             var token = obj?[name];
             if (token == null || token.Type == JTokenType.Null) return "";
             return token.Type == JTokenType.String ? token.Value<string>() ?? "" : token.ToString();
+        }
+
+        private static long GetLong(JObject? obj, string name, long fallback)
+        {
+            var token = obj?[name];
+            if (token == null || token.Type == JTokenType.Null) return fallback;
+            try { return token.Value<long>(); }
+            catch
+            {
+                return long.TryParse(token.ToString(), out var value) ? value : fallback;
+            }
+        }
+
+        private static double? GetDouble(JObject? obj, string name)
+        {
+            var token = obj?[name];
+            if (token == null || token.Type == JTokenType.Null) return null;
+            try { return token.Value<double>(); }
+            catch
+            {
+                return double.TryParse(token.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+                    ? value
+                    : null;
+            }
         }
     }
 }

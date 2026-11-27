@@ -1,8 +1,8 @@
 # BiliNCM Deck
 
-BiliNCM Deck 是一个用于 B 站直播的网易云点歌工具：观众在直播间发弹幕点歌，歌曲会加入网易云音乐播放列表，当前歌曲不会被打断；同时提供 OBS 队列浮层。
+BiliNCM Deck 是一个用于 B 站直播的网易云点歌工具：观众在直播间发弹幕点歌，歌曲会加入网易云音乐播放列表，当前歌曲不会被打断；同时提供 OBS 队列浮层和歌词浮层。
 
-版本：v1.0.0 · 系统：Windows 10/11 x64 
+版本：v1.1.0 · 系统：Windows 10/11 x64
 
 <ins>网易云音乐：__**2.10.13**__</ins>  （<ins>3.x版本已确认不兼容，2.x其它版本未验证</ins>）
 
@@ -16,15 +16,15 @@ BiliNCM Deck 是一个用于 B 站直播的网易云点歌工具：观众在直�
 
 | 文件 | 说明 |
 |---|---|
-| `BiliNCM-Deck-v1.0.0-win-x64.zip` | 完整便携包，解压即用 |
-| `BiliNCM-Deck-v1.0.0-win-x64.zip.sha256` | 校验文件 |
+| `BiliNCM-Deck-v1.1.0-win-x64.zip` | 完整便携包，解压即用 |
+| `BiliNCM-Deck-v1.1.0-win-x64.zip.sha256` | 校验文件 |
 
 大多数用户只需要下载第一个。
 
 可选校验：
 
 ```powershell
-Get-FileHash .\BiliNCM-Deck-v1.0.0-win-x64.zip -Algorithm SHA256
+Get-FileHash .\BiliNCM-Deck-v1.1.0-win-x64.zip -Algorithm SHA256
 ```
 
 和 `.sha256` 文件里的值对比。
@@ -146,7 +146,19 @@ D:\CloudMusic\cloudmusic.exe
 - `关闭点歌` 只拦截新的普通点歌；管理命令和待播撤回在暂停时仍然可用
 - `置顶` / `置顶点歌` 把目标放到当前歌下一首；连续置顶时，最后一次置顶的歌排最前
 
-## 四、托盘与退出
+## 四、歌词浮层
+
+OBS 歌词源填：`http://127.0.0.1:5566/lyrics`
+
+- 在设置页「歌词浮层」里选择显示行数：`1 / 3 / 5 / 7`，默认 5 行
+- 当前歌词固定居中高亮，随网易云实际播放状态滚动
+- 可复用现有 6 套皮肤；另有「纯歌词」全透明皮肤，可自定义字体颜色
+- 可开启歌词翻译，每行原文下方显示小字翻译
+- 网易云没有歌词时显示「暂无歌词」
+- 网易云歌词有时间轴时精确滚动；没有时间轴时先尝试外部同步歌词源，失败后按歌曲时长估算
+- 如果外部源或估算效果不佳，可在设置页开启「强制静态显示」，关闭滚动并静态展示歌词
+
+## 五、托盘与退出
 
 - 右键任务栏托盘图标：打开浮层、打开设置、打开日志目录、退出程序
 - 设置页底部：退出程序
@@ -154,7 +166,7 @@ D:\CloudMusic\cloudmusic.exe
 
 关闭浮层或设置页面不会退出程序；B 站弹幕、网易云队列和 `5566` 服务会继续在后台运行。
 
-## 五、运行数据与日志
+## 六、运行数据与日志
 
 配置、背景图和日志都保存在 `BiliNCM-Deck.exe` 同目录，便携包不会写入系统目录。
 
@@ -165,18 +177,19 @@ D:\CloudMusic\cloudmusic.exe
 
 > `config.json` 含有 B 站登录信息
 
-## 六、已知限制
+## 七、已知限制
 
 - 重启 Deck 会清空浮层待播列表；网易云中已存在的待播副本不会自动恢复跟踪。重启前请确认，或重新点歌。
 - `置顶` / `优先` 只按歌名或点歌人昵称匹配，不匹配歌手名。
 - 房管功能已实现，但未验证。
+- 歌词同步以网易云实际播放状态为准；无时间轴歌词会先尝试外部同步源，再按时长估算，匹配结果可能不完美，可开启「强制静态显示」回退。
 - **<ins>网易云音乐只支持 2.10.13；3.x 不兼容，其他 2.x 版本未验证。</ins>**
 
-## 七、许可
+## 八、许可
 
 本项目沿用上游的 MIT 许可与版权声明，详见 `LICENSE` 和 `NOTICE`。
 
-## 八、开发与记录
+## 九、开发与记录
 
 以下内容主要供开发和维护记录使用，普通用户不需要阅读：
 
@@ -187,4 +200,4 @@ D:\CloudMusic\cloudmusic.exe
 - [POC 验收](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/POC.md)
 - [队列语义移植](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/QUEUE-PORT.md)
 - [Phase 2/3 回归清单](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/REGRESSION.md)
-- [v1.0.0 发布说明](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/RELEASE-v1.0.0.md)
+- [v1.1.0 发布说明](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/RELEASE-v1.1.0.md)
