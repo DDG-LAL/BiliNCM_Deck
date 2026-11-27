@@ -99,7 +99,7 @@ D:\CloudMusic\cloudmusic.exe
 
 在设置页可以切换内置皮肤、上传背景图、调整图片透明度、文字底衬和焦点位置。设置会自动保存，浮层在 1～2 秒内刷新。
 
-![浮层皮肤设置](docs/images/overlay-settings.png)
+![浮层皮肤设置](https://raw.githubusercontent.com/DDG-LAL/BiliNCM_Deck/main/docs/images/overlay-settings.png)
 
 ## 三、直播时怎么用
 
@@ -201,11 +201,11 @@ OBS 浏览器源 URL 必须是 `http://127.0.0.1:5566/`，不要填 `/settings`�
 
 以下内容主要供开发和维护记录使用，普通用户不需要阅读：
 
-- [开发与实现记录](docs/DEVELOPMENT.md)
-- [目标架构](docs/ARCHITECTURE.md)
-- [关键决策](docs/DECISIONS.md)
-- [交接说明](docs/HANDOFF.md)
-- [POC 验收](docs/POC.md)
-- [队列语义移植](docs/QUEUE-PORT.md)
-- [Phase 2/3 回归清单](docs/REGRESSION.md)
-- [v1.0.0 发布说明](docs/RELEASE-v1.0.0.md)
+- [开发与实现记录](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/DEVELOPMENT.md)
+- [目标架构](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/ARCHITECTURE.md)
+- [关键决策](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/DECISIONS.md)
+- [交接说明](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/HANDOFF.md)
+- [POC 验收](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/POC.md)
+- [队列语义移植](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/QUEUE-PORT.md)
+- [Phase 2/3 回归清单](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/REGRESSION.md)
+- [v1.0.0 发布说明](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/RELEASE-v1.0.0.md)
