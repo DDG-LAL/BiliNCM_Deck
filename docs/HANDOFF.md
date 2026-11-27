@@ -108,7 +108,8 @@ src/BiliNCM-Deck/Assets/BiliNCM-Deck.ico     exe / 托盘应用图标
 src/BiliNCM-Deck/web/deck/                   5566 浮层与设置页
 src/BiliNCM-Deck/web/ncm/                    Companion JS 表达式
 tools/publish.ps1                            self-contained 发布
-tools/smoke-test.ps1                         5566/5555 关闭/API/日志 smoke test
+tools/smoke-test.ps1                         5566/API/日志 smoke test
+docs/DEVELOPMENT.md                          开发、构建、发布与已移除内容记录
 docs/REGRESSION.md                           Phase 2/3 现场回归清单
 ```
 
