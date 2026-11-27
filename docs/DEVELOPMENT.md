@@ -14,9 +14,11 @@
 
 ```text
 src/BiliNCM-Deck/           主程序
+src/BiliNCM-Deck.Updater/   独立更新器（net48，小型 exe）
 src/BiliNCM-Deck/web/deck/  5566 浮层与设置页
 src/BiliNCM-Deck/web/ncm/   网易云 CDP 操作脚本
 src/BiliNCM-Deck/LyricsService.cs  歌词抓取、LRC 解析、外部同步源与播放位置
+src/BiliNCM-Deck/UpdateService.cs  GitHub 版本检查与更新状态
 docs/                       架构、决策、交接、回归与发布记录
 packaging/                  便携包启动/停止脚本和说明
 reference/                  旧 Companion/Overlay/Launcher 脚本，仅作移植参考
@@ -25,13 +27,16 @@ tools/                      构建、发布和冒烟测试脚本
 
 ## 构建与发布
 
-需要 .NET 10 SDK（目标框架 `net10.0-windows`）。
+需要 .NET 10 SDK（目标框架 `net10.0-windows`）。Updater 目标为 .NET Framework 4.8，编译时通过 ReferenceAssemblies 包引用。
 
 ```powershell
 # Debug 构建
 dotnet build .\src\BiliNCM-Deck\BiliNCM-Deck.csproj
 
-# 生成 self-contained 便携包到 publish\
+# 独立 Updater（Release）
+dotnet build .\src\BiliNCM-Deck.Updater\BiliNCM-Deck.Updater.csproj -c Release
+
+# 生成 self-contained 便携包到 publish\（会一并构建 Updater）
 powershell -ExecutionPolicy Bypass -File .\tools\publish.ps1
 
 # 冒烟测试
@@ -41,10 +46,11 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 发布前注意：
 
 - `tools\publish.ps1` 会删除并重建 `publish\`；先备份 `config.json`、`overlay-config.json`、`overlay-assets\` 和日志
-- GitHub Release 的 zip 不应包含 `config.json`、`overlay-config.json`、`lyrics-config.json`、`ncm-path.txt`、`overlay-assets\`、`deck.log`、`danmaku.log`、`crash.log` 或 PDB
-- 版本号在 `src/BiliNCM-Deck/BiliNCM-Deck.csproj` 的 `<Version>` 中维护
+- GitHub Release 的 zip 不应包含 `config.json`、`overlay-config.json`、`lyrics-config.json`、`ncm-path.txt`、`overlay-assets\`、`deck.log`、`danmaku.log`、`crash.log`、`update-state.json` 或 PDB
+- Release 附件固定包含 zip、zip.sha256 和 `BiliNCM-Deck-Updater.exe`
+- 版本号在 `src/BiliNCM-Deck/BiliNCM-Deck.csproj` 和 `src/BiliNCM-Deck.Updater/BiliNCM-Deck.Updater.csproj` 中维护
 - 发布后确认 `/health` 返回的 `version` 与 tag 一致
-- 发布 zip 建议附带 SHA256 校验文件
+- 发布 zip 附 SHA256 校验文件
 
 ## 当前技术结构
 
@@ -55,6 +61,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 - `DanmakuLog.cs` / `DeckLog.cs` 分别记录全量弹幕和运行日志
 - `LyricsService.cs` 负责网易云/LRCLIB 歌词、LRC 解析和播放位置计算
 - `web/deck/BiliNCM-Lyrics.html` 是独立歌词浮层，播放位置随网易云状态校正
+- `UpdateService.cs` 检查 GitHub Release、保存 48 小时检查状态和忽略版本
+- `src/BiliNCM-Deck.Updater` 是独立更新器：等待 Deck 退出、校验 SHA256、备份、替换、重启和回滚
 - B 站弹幕 WebSocket 支持 Brotli 批量包，递归解析内层包和多条 JSON
 
 ## 已移除的旧内容
@@ -77,7 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 
 - [Phase 2/3 回归清单](REGRESSION.md)
 - [Phase 2/3 当前状态](PHASE2-PENDING.md)
-- [v1.1.0 发布说明](RELEASE-v1.1.0.md)
+- [v1.1.1 发布说明](RELEASE-v1.1.1.md)
 
 ## 已知限制
 

@@ -23,7 +23,7 @@ BiliNCM-Deck.exe
 ## 当前基线
 
 - 项目目录：仓库根目录（clone 后即可）
-- 版本：`1.1.0`（歌词浮层版本，提交以 `git log -1` 为准）
+- 版本：`1.1.1`（歌词浮层 + 内置更新，提交以 `git log -1` 为准）
 - 工作区：Phase 2/3 核心回归已完成；重启 Deck 不保留待播列表为已知限制
 - GitHub：`https://github.com/DDG-LAL/BiliNCM_Deck`
 - 便携包：`publish\`（self-contained 单文件）
@@ -89,6 +89,11 @@ BiliNCM-Deck.exe
   - 支持 1/3/5/7 行、现有 6 套皮肤 + 纯歌词透明皮肤、翻译开关、纯歌词字色
   - 播放位置跟随网易云 `start/state/position`，前端只做采样间插值
   - 可强制静态显示作为回退
+- 内置更新：
+  - 设置页「关于 / 更新」检查 GitHub 最新稳定版
+  - 48 小时自动检查，只提示；可忽略当前新版本
+  - 下载 zip 和 SHA256，交由独立 `BiliNCM-Deck-Updater.exe` 关闭 Deck、备份、替换和重启
+  - 失败自动回滚，不覆盖用户配置和日志
 - 同一首歌被多人重复点歌时，撤回/移除只删除自己的 bot 队列条目；只有最后一条请求消失时才删除 NCM 副本
 - `置顶` / `置顶点歌` 使用 NCM `current+1` 实际移动，连续置顶以最后一次排最前
 - `live_status` 采用初始读取 + WebSocket LIVE/PREPARING 事件 + 60 秒低频轮询刷新
@@ -110,6 +115,8 @@ src/BiliNCM-Deck/DeckLog.cs                  持久化 deck.log、轮转与脱�
 src/BiliNCM-Deck/DanmakuLog.cs               全部 DANMU_MSG 的 danmaku.log
 src/BiliNCM-Deck/LyricsService.cs            网易云/LRCLIB 歌词、LRC 解析与播放位置
 src/BiliNCM-Deck/web/deck/BiliNCM-Lyrics.html  歌词浮层页面
+src/BiliNCM-Deck/UpdateService.cs             GitHub 版本检查与更新状态
+src/BiliNCM-Deck.Updater/                     独立更新器（net48，小体积 exe）
 src/BiliNCM-Deck/TrayHost.cs                 托盘图标与退出菜单
 src/BiliNCM-Deck/Assets/BiliNCM-Deck.ico     exe / 托盘应用图标
 src/BiliNCM-Deck/web/deck/                   5566 浮层与设置页

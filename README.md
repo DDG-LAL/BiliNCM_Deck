@@ -2,7 +2,7 @@
 
 BiliNCM Deck 是一个用于 B 站直播的网易云点歌工具：观众在直播间发弹幕点歌，歌曲会加入网易云音乐播放列表，当前歌曲不会被打断；同时提供 OBS 队列浮层和歌词浮层。
 
-版本：v1.1.0 · 系统：Windows 10/11 x64
+版本：v1.1.1 · 系统：Windows 10/11 x64
 
 <ins>网易云音乐：__**2.10.13**__</ins>  （<ins>3.x版本已确认不兼容，2.x其它版本未验证</ins>）
 
@@ -16,15 +16,15 @@ BiliNCM Deck 是一个用于 B 站直播的网易云点歌工具：观众在直�
 
 | 文件 | 说明 |
 |---|---|
-| `BiliNCM-Deck-v1.1.0-win-x64.zip` | 完整便携包，解压即用 |
-| `BiliNCM-Deck-v1.1.0-win-x64.zip.sha256` | 校验文件 |
+| `BiliNCM-Deck-v1.1.1-win-x64.zip` | 完整便携包，解压即用 |
+| `BiliNCM-Deck-v1.1.1-win-x64.zip.sha256` | 校验文件 |
 
 大多数用户只需要下载第一个。
 
 可选校验：
 
 ```powershell
-Get-FileHash .\BiliNCM-Deck-v1.1.0-win-x64.zip -Algorithm SHA256
+Get-FileHash .\BiliNCM-Deck-v1.1.1-win-x64.zip -Algorithm SHA256
 ```
 
 和 `.sha256` 文件里的值对比。
@@ -158,7 +158,33 @@ OBS 歌词源填：`http://127.0.0.1:5566/lyrics`
 - 网易云歌词有时间轴时精确滚动；没有时间轴时先尝试外部同步歌词源，失败后按歌曲时长估算
 - 如果外部源或估算效果不佳，可在设置页开启「强制静态显示」，关闭滚动并静态展示歌词
 
-## 五、托盘与退出
+## 五、升级
+
+### 从 1.0.0 升级（只需一次）
+
+1. 到 [Releases](https://github.com/DDG-LAL/BiliNCM_Deck/releases/latest) 下载 `BiliNCM-Deck-Updater.exe`
+2. 放到 `BiliNCM-Deck.exe` 同目录
+3. 建议先下播，然后右键托盘退出 Deck
+4. 双击 `BiliNCM-Deck-Updater.exe`，按提示更新
+5. 等待自动重启，登录、配置、背景和日志都会保留
+
+> 如果 Windows 提示“Windows 已保护你的电脑”，点「更多信息」→「仍要运行」。这是未签名程序的正常提示。
+
+### 以后版本
+
+1. 打开设置页「关于 / 更新」
+2. 点击「检查更新」
+3. 发现新版本后点击「下载并更新」
+4. 按提示确认关闭 Deck；更新期间浮层和点歌会短暂中断
+5. 更新完成后自动重启
+
+- 自动检查每 48 小时一次，只提示，不自动安装
+- 「当前版本不再提示」只忽略当前这个新版本，发布更新的版本后会再次提示
+- 更新前会校验 SHA256，并自动备份旧版本；失败会回滚
+- GitHub 无法访问时，可点「打开发布页」手动下载，不影响当前版本继续使用
+- 更新会重启 Deck，当前待播列表会清空；建议下播后再更新
+
+## 六、托盘与退出
 
 - 右键任务栏托盘图标：打开浮层、打开设置、打开日志目录、退出程序
 - 设置页底部：退出程序
@@ -166,7 +192,7 @@ OBS 歌词源填：`http://127.0.0.1:5566/lyrics`
 
 关闭浮层或设置页面不会退出程序；B 站弹幕、网易云队列和 `5566` 服务会继续在后台运行。
 
-## 六、运行数据与日志
+## 七、运行数据与日志
 
 配置、背景图和日志都保存在 `BiliNCM-Deck.exe` 同目录，便携包不会写入系统目录。
 
@@ -177,7 +203,7 @@ OBS 歌词源填：`http://127.0.0.1:5566/lyrics`
 
 > `config.json` 含有 B 站登录信息
 
-## 七、已知限制
+## 八、已知限制
 
 - 重启 Deck 会清空浮层待播列表；网易云中已存在的待播副本不会自动恢复跟踪。重启前请确认，或重新点歌。
 - `置顶` / `优先` 只按歌名或点歌人昵称匹配，不匹配歌手名。
@@ -185,11 +211,11 @@ OBS 歌词源填：`http://127.0.0.1:5566/lyrics`
 - 歌词同步以网易云实际播放状态为准；无时间轴歌词会先尝试外部同步源，再按时长估算，匹配结果可能不完美，可开启「强制静态显示」回退。
 - **<ins>网易云音乐只支持 2.10.13；3.x 不兼容，其他 2.x 版本未验证。</ins>**
 
-## 八、许可
+## 九、许可
 
 本项目沿用上游的 MIT 许可与版权声明，详见 `LICENSE` 和 `NOTICE`。
 
-## 九、开发与记录
+## 十、开发与记录
 
 以下内容主要供开发和维护记录使用，普通用户不需要阅读：
 
@@ -200,4 +226,4 @@ OBS 歌词源填：`http://127.0.0.1:5566/lyrics`
 - [POC 验收](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/POC.md)
 - [队列语义移植](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/QUEUE-PORT.md)
 - [Phase 2/3 回归清单](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/REGRESSION.md)
-- [v1.1.0 发布说明](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/RELEASE-v1.1.0.md)
+- [v1.1.1 发布说明](https://github.com/DDG-LAL/BiliNCM_Deck/blob/main/docs/RELEASE-v1.1.1.md)

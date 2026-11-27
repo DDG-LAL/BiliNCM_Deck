@@ -224,6 +224,7 @@ namespace BiliNetEaseIntegratedApp
                         OpenLogDirectory,
                         () => RequestShutdown("tray"));
                     _tray.Start();
+                    StartUpdateMonitor();
                     WriteLog(">>> [系统] 托盘图标已启动；关闭页面不会退出程序", ConsoleColor.Gray);
                 } catch (Exception ex) {
                     WriteLog("[托盘] 启动失败: " + ex.Message, ConsoleColor.Yellow);
@@ -380,11 +381,74 @@ namespace BiliNetEaseIntegratedApp
                 }
 
                 if (urlPath == "/api/update/check" && req.HttpMethod == "GET") {
-                    return WriteApiJson(res, "{\"hasUpdate\":false,\"error\":\"update_disabled\"}");
+                    bool force = string.Equals(req.QueryString["force"], "1", StringComparison.OrdinalIgnoreCase);
+                    var update = await UpdateService.CheckAsync(force);
+                    var snap = _companionEngine?.Snapshot();
+                    update.pendingCount = snap?.pendingCount ?? 0;
+                    update.liveStatus = _liveStatus;
+                    return WriteApiJson(res, JsonSerializer.Serialize(update));
+                }
+
+                if (urlPath == "/api/update/dismiss" && req.HttpMethod == "POST") {
+                    using var reader = new StreamReader(req.InputStream, req.ContentEncoding ?? Encoding.UTF8);
+                    string body = reader.ReadToEnd();
+                    string version = "";
+                    try {
+                        using var doc = JsonDocument.Parse(body);
+                        if (doc.RootElement.TryGetProperty("version", out var versionProp))
+                            version = versionProp.GetString() ?? "";
+                    } catch { }
+                    if (!UpdateService.Dismiss(version))
+                        return WriteApiJson(res, "{\"ok\":false,\"error\":\"invalid_version\"}", 400);
+                    return WriteApiJson(res, "{\"ok\":true}");
                 }
 
                 if (urlPath == "/api/update/apply" && req.HttpMethod == "POST") {
-                    return WriteApiJson(res, "{\"status\":\"disabled\"}");
+                    var update = await UpdateService.CheckAsync(false);
+                    if (!update.hasUpdate) {
+                        return WriteApiJson(res, JsonSerializer.Serialize(new {
+                            ok = false,
+                            error = "no_update",
+                            releaseUrl = update.releaseUrl
+                        }), 400);
+                    }
+
+                    string updaterPath = Path.Combine(AppContext.BaseDirectory, "BiliNCM-Deck-Updater.exe");
+                    if (!File.Exists(updaterPath)) {
+                        return WriteApiJson(res, JsonSerializer.Serialize(new {
+                            ok = false,
+                            error = "updater_missing",
+                            releaseUrl = update.releaseUrl
+                        }), 409);
+                    }
+
+                    try {
+                        string target = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+                        var startInfo = new ProcessStartInfo {
+                            FileName = updaterPath,
+                            Arguments = $"--auto --target \"{target}\" --wait-pid {Environment.ProcessId}",
+                            WorkingDirectory = AppContext.BaseDirectory,
+                            UseShellExecute = true
+                        };
+                        Process.Start(startInfo);
+                        _ = Task.Run(async () => {
+                            await Task.Delay(1200);
+                            RequestShutdown("update");
+                        });
+                        return WriteApiJson(res, JsonSerializer.Serialize(new {
+                            ok = true,
+                            message = "starting_updater",
+                            releaseUrl = update.releaseUrl
+                        }));
+                    } catch (Exception ex) {
+                        WriteLog("[更新] 启动更新器失败: " + ex.Message, ConsoleColor.Red);
+                        return WriteApiJson(res, JsonSerializer.Serialize(new {
+                            ok = false,
+                            error = "updater_start_failed",
+                            detail = ex.Message,
+                            releaseUrl = update.releaseUrl
+                        }), 500);
+                    }
                 }
 
                 if (urlPath == "/api/config") {
@@ -1201,8 +1265,31 @@ namespace BiliNetEaseIntegratedApp
             }
         }
 
-        static void StartLiveStatusMonitor(long roomId) {
-            try { _liveStatusCts?.Cancel(); } catch { }
+        static void StartUpdateMonitor()
+        {
+            var ct = _engineCts.Token;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(15), ct);
+                    while (!ct.IsCancellationRequested)
+                    {
+                        var check = await UpdateService.CheckAsync(false, ct);
+                        if (check.ok && check.hasUpdate && !check.dismissed)
+                            _tray?.NotifyUpdateAvailable(check.latestVersion);
+                        await Task.Delay(TimeSpan.FromHours(6), ct);
+                    }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    WriteLog("[更新] 自动检查失败: " + ex.Message, ConsoleColor.DarkGray);
+                }
+            });
+        }
+
+        static void StartLiveStatusMonitor(long roomId) {            try { _liveStatusCts?.Cancel(); } catch { }
             _liveStatusCts = new CancellationTokenSource();
             var ct = _liveStatusCts.Token;
             _ = Task.Run(() => MonitorLiveStatusAsync(roomId, ct));

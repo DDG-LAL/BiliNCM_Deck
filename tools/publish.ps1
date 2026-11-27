@@ -45,4 +45,18 @@ $ncmPath = Join-Path $root 'ncm-path.txt'
 if (Test-Path $ncmPath) {
     Copy-Item -LiteralPath $ncmPath -Destination (Join-Path $out 'ncm-path.txt') -Force
 }
+
+$updaterProject = Join-Path $root 'src\BiliNCM-Deck.Updater\BiliNCM-Deck.Updater.csproj'
+if (Test-Path $updaterProject) {
+    & $dotnet build $updaterProject -c Release -v:q
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $updaterExe = Join-Path $root 'src\BiliNCM-Deck.Updater\bin\Release\net48\BiliNCM-Deck-Updater.exe'
+    if (Test-Path $updaterExe) {
+        Copy-Item -LiteralPath $updaterExe -Destination (Join-Path $out 'BiliNCM-Deck-Updater.exe') -Force
+        $updaterConfig = $updaterExe + '.config'
+        if (Test-Path $updaterConfig) {
+            Copy-Item -LiteralPath $updaterConfig -Destination (Join-Path $out 'BiliNCM-Deck-Updater.exe.config') -Force
+        }
+    }
+}
 Write-Host "Published to $out"

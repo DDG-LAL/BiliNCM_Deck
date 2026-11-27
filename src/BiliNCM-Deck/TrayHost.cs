@@ -36,6 +36,20 @@ namespace BiliNetEaseIntegratedApp
             _thread.Start();
         }
 
+        public void NotifyUpdateAvailable(string version)
+        {
+            if (string.IsNullOrWhiteSpace(version)) return;
+            try
+            {
+                _icon?.ShowBalloonTip(
+                    5000,
+                    "发现新版本 v" + version,
+                    "打开设置页查看更新；更新会重启 Deck。",
+                    ToolTipIcon.Info);
+            }
+            catch { }
+        }
+
         private void Run()
         {
             try

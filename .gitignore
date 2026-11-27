@@ -13,6 +13,7 @@ overlay-config.json
 overlay-state.json
 overlay-assets/
 lyrics-config.json
+update-state.json
 ncm-path.txt
 *.log
 *.log.*
