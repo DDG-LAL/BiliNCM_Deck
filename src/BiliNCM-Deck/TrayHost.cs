@@ -14,17 +14,19 @@ namespace BiliNetEaseIntegratedApp
         private readonly Action _openOverlay;
         private readonly Action _openSettings;
         private readonly Action _openLogs;
+        private readonly Action _checkUpdate;
         private readonly Action _exit;
         private Thread? _thread;
         private NotifyIcon? _icon;
         private ContextMenuStrip? _menu;
         private Icon? _iconImage;
 
-        public TrayHost(Action openOverlay, Action openSettings, Action openLogs, Action exit)
+        public TrayHost(Action openOverlay, Action openSettings, Action openLogs, Action checkUpdate, Action exit)
         {
             _openOverlay = openOverlay;
             _openSettings = openSettings;
             _openLogs = openLogs;
+            _checkUpdate = checkUpdate;
             _exit = exit;
         }
 
@@ -39,13 +41,17 @@ namespace BiliNetEaseIntegratedApp
         public void NotifyUpdateAvailable(string version)
         {
             if (string.IsNullOrWhiteSpace(version)) return;
+            ShowNotification(
+                "发现新版本 v" + version,
+                "打开设置页查看更新；更新会重启 Deck。",
+                ToolTipIcon.Info);
+        }
+
+        public void ShowNotification(string title, string text, ToolTipIcon icon = ToolTipIcon.Info)
+        {
             try
             {
-                _icon?.ShowBalloonTip(
-                    5000,
-                    "发现新版本 v" + version,
-                    "打开设置页查看更新；更新会重启 Deck。",
-                    ToolTipIcon.Info);
+                _icon?.ShowBalloonTip(5000, title, text, icon);
             }
             catch { }
         }
@@ -59,6 +65,7 @@ namespace BiliNetEaseIntegratedApp
                 _menu.Items.Add("打开浮层", null, (_, __) => SafeInvoke(_openOverlay));
                 _menu.Items.Add("打开设置", null, (_, __) => SafeInvoke(_openSettings));
                 _menu.Items.Add("打开日志目录", null, (_, __) => SafeInvoke(_openLogs));
+                _menu.Items.Add("检查更新", null, (_, __) => SafeInvoke(_checkUpdate));
                 _menu.Items.Add(new ToolStripSeparator());
                 _menu.Items.Add("退出 BiliNCM Deck", null, (_, __) => SafeInvoke(_exit));
 

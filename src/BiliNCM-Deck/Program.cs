@@ -222,6 +222,7 @@ namespace BiliNetEaseIntegratedApp
                         () => OpenBrowser("http://127.0.0.1:5566/"),
                         () => OpenBrowser("http://127.0.0.1:5566/settings"),
                         OpenLogDirectory,
+                        () => _ = Task.Run(CheckUpdatesFromTrayAsync),
                         () => RequestShutdown("tray"));
                     _tray.Start();
                     StartUpdateMonitor();
@@ -1262,6 +1263,49 @@ namespace BiliNetEaseIntegratedApp
             WriteLog($">>> [直播状态] {label}（{source}）", status == 1 ? ConsoleColor.Green : ConsoleColor.Yellow);
             if (status != 1) {
                 WriteLog(">>> [提示] 当前不是直播中状态；权限、房管标记和真实观众行为建议开播后再验证", ConsoleColor.Yellow);
+            }
+        }
+
+        static int _trayUpdateCheckBusy;
+
+        static async Task CheckUpdatesFromTrayAsync()
+        {
+            if (Interlocked.Exchange(ref _trayUpdateCheckBusy, 1) != 0) return;
+            try
+            {
+                var check = await UpdateService.CheckAsync(true);
+                var snap = _companionEngine?.Snapshot();
+                check.pendingCount = snap?.pendingCount ?? 0;
+                check.liveStatus = _liveStatus;
+
+                if (!check.ok)
+                {
+                    _tray?.ShowNotification(
+                        "检查更新失败",
+                        "无法连接 GitHub；可以打开设置页手动下载最新版。",
+                        System.Windows.Forms.ToolTipIcon.Warning);
+                    return;
+                }
+                if (!check.hasUpdate)
+                {
+                    _tray?.ShowNotification(
+                        "已是最新版本",
+                        $"当前版本 v{check.currentVersion} 已经是最新版本。",
+                        System.Windows.Forms.ToolTipIcon.Info);
+                    return;
+                }
+
+                _tray?.NotifyUpdateAvailable(check.latestVersion);
+                OpenBrowser("http://127.0.0.1:5566/settings#updateBlock");
+            }
+            catch (Exception ex)
+            {
+                WriteLog("[更新] 托盘检查失败: " + ex.Message, ConsoleColor.Yellow);
+                _tray?.ShowNotification("检查更新失败", "请打开设置页手动下载最新版。", System.Windows.Forms.ToolTipIcon.Warning);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _trayUpdateCheckBusy, 0);
             }
         }
 

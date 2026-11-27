@@ -381,7 +381,7 @@
         <p class="hint">焦点只影响「填充裁切」和「完整显示 + 模糊」里的裁切部分，用来决定保留图片的哪一块。</p>
       </section>
 
-      <section class="block">
+      <section class="block" id="updateBlock">
         <h2>关于 / 更新</h2>
         <div class="update-head">
           <span>当前版本：<b id="currentVersion">-</b></span>
@@ -888,6 +888,9 @@
       .then(readJson)
       .then(function (data) {
         renderUpdate(data);
+        if (force && data && data.ok && !data.hasUpdate) {
+          alert('当前版本 v' + (data.currentVersion || '') + ' 已经是最新版本。');
+        }
       })
       .catch(function (err) {
         setUpdateStatus('检查失败', 'bad');
