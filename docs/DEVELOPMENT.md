@@ -85,6 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\smoke-test.ps1 -Exe .\publish\B
 
 - [Phase 2/3 回归清单](REGRESSION.md)
 - [Phase 2/3 当前状态](PHASE2-PENDING.md)
+- [v1.1.2 发布说明](RELEASE-v1.1.2.md)
 - [v1.1.1 发布说明](RELEASE-v1.1.1.md)
 
 ## 已知限制

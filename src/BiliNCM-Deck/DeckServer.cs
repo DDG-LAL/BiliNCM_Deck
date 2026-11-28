@@ -166,6 +166,9 @@ namespace BiliNetEaseIntegratedApp
                             noSong = true,
                             playing = false,
                             position = 0.0,
+                            lyricOffset = 0.0,
+                            seekSerial = 0L,
+                            seekPosition = (double?)null,
                             serverTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                             noLyrics = true,
                             hasTimeline = false,
@@ -178,7 +181,7 @@ namespace BiliNetEaseIntegratedApp
                     }
 
                     long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                    var (playing, position) = _lyricsPlayback.Resolve(current, now);
+                    var (playing, position, seeked, rawPosition, positionSource) = _lyricsPlayback.Resolve(current, now);
                     var lyrics = await _lyrics.GetAsync(current.id, current.name, current.artists, current.duration);
                     SendJson(res, new
                     {
@@ -193,6 +196,14 @@ namespace BiliNetEaseIntegratedApp
                         },
                         playing,
                         position,
+                        seeked,
+                        rawPosition,
+                        positionSource,
+                        playedPosition = current.position,
+                        progressPosition = current.progressPosition,
+                        lyricOffset = current.lyricOffset,
+                        seekSerial = current.seekSerial,
+                        seekPosition = current.seekPosition,
                         serverTime = now,
                         state = current.state,
                         start = current.start,
@@ -366,12 +377,20 @@ namespace BiliNetEaseIntegratedApp
                 {
                     if (File.Exists(_lyricsConfigFile))
                     {
-                        var parsed = JsonConvert.DeserializeObject<LyricsConfig>(File.ReadAllText(_lyricsConfigFile));
-                        return (parsed ?? new LyricsConfig()).Normalize();
+                        var parsed = JsonConvert.DeserializeObject<LyricsConfig>(File.ReadAllText(_lyricsConfigFile)) ?? new LyricsConfig();
+                        if (parsed.schemaVersion < LyricsConfig.CurrentSchemaVersion)
+                        {
+                            // v1.1.2: translations are enabled by default. Apply
+                            // the new default once; later manual changes stay.
+                            parsed.translation = true;
+                            parsed.schemaVersion = LyricsConfig.CurrentSchemaVersion;
+                            try { WriteLyricsConfig(parsed); } catch { }
+                        }
+                        return parsed.Normalize();
                     }
                 }
                 catch { }
-                return new LyricsConfig();
+                return new LyricsConfig { schemaVersion = LyricsConfig.CurrentSchemaVersion };
             }
         }
 
@@ -379,6 +398,7 @@ namespace BiliNetEaseIntegratedApp
         {
             lock (_lyricsConfigLock)
             {
+                config.schemaVersion = LyricsConfig.CurrentSchemaVersion;
                 File.WriteAllText(_lyricsConfigFile, JsonConvert.SerializeObject(config.Normalize(), Formatting.Indented));
             }
         }

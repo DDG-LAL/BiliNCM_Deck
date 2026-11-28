@@ -12,6 +12,7 @@ namespace BiliNetEaseIntegratedApp
     internal sealed class TrayHost : IDisposable
     {
         private readonly Action _openOverlay;
+        private readonly Action _openLyrics;
         private readonly Action _openSettings;
         private readonly Action _openLogs;
         private readonly Action _checkUpdate;
@@ -21,9 +22,10 @@ namespace BiliNetEaseIntegratedApp
         private ContextMenuStrip? _menu;
         private Icon? _iconImage;
 
-        public TrayHost(Action openOverlay, Action openSettings, Action openLogs, Action checkUpdate, Action exit)
+        public TrayHost(Action openOverlay, Action openLyrics, Action openSettings, Action openLogs, Action checkUpdate, Action exit)
         {
             _openOverlay = openOverlay;
+            _openLyrics = openLyrics;
             _openSettings = openSettings;
             _openLogs = openLogs;
             _checkUpdate = checkUpdate;
@@ -62,9 +64,10 @@ namespace BiliNetEaseIntegratedApp
             {
                 Application.EnableVisualStyles();
                 _menu = new ContextMenuStrip();
-                _menu.Items.Add("打开浮层", null, (_, __) => SafeInvoke(_openOverlay));
-                _menu.Items.Add("打开设置", null, (_, __) => SafeInvoke(_openSettings));
-                _menu.Items.Add("打开日志目录", null, (_, __) => SafeInvoke(_openLogs));
+                _menu.Items.Add("点歌浮层", null, (_, __) => SafeInvoke(_openOverlay));
+                _menu.Items.Add("歌词浮层", null, (_, __) => SafeInvoke(_openLyrics));
+                _menu.Items.Add("设置", null, (_, __) => SafeInvoke(_openSettings));
+                _menu.Items.Add("日志", null, (_, __) => SafeInvoke(_openLogs));
                 _menu.Items.Add("检查更新", null, (_, __) => SafeInvoke(_checkUpdate));
                 _menu.Items.Add(new ToolStripSeparator());
                 _menu.Items.Add("退出 BiliNCM Deck", null, (_, __) => SafeInvoke(_exit));

@@ -6,7 +6,7 @@
     <RootNamespace>BiliNCMDeck.Updater</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <ApplicationIcon>..\BiliNCM-Deck\Assets\BiliNCM-Deck.ico</ApplicationIcon>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>

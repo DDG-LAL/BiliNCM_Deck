@@ -220,6 +220,7 @@ namespace BiliNetEaseIntegratedApp
                 try {
                     _tray = new TrayHost(
                         () => OpenBrowser("http://127.0.0.1:5566/"),
+                        () => OpenBrowser("http://127.0.0.1:5566/lyrics"),
                         () => OpenBrowser("http://127.0.0.1:5566/settings"),
                         OpenLogDirectory,
                         () => _ = Task.Run(CheckUpdatesFromTrayAsync),

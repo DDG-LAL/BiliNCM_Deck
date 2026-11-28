@@ -539,7 +539,7 @@ namespace BiliNCMDeck.Updater
         private static HttpClient CreateHttpClient()
         {
             var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "BiliNCM-Deck-Updater/1.1.1");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "BiliNCM-Deck-Updater/1.1.2");
             client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/vnd.github+json");
             return client;
         }

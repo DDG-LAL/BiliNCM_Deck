@@ -18,7 +18,6 @@
     --bg:linear-gradient(160deg,rgba(8,11,17,.94),rgba(15,20,31,.84));
     --radius:18px;
     --shadow:0 18px 55px rgba(0,0,0,.38);
-    --blur:blur(12px);
     --text-shadow:0 2px 10px rgba(0,0,0,.55);
   }
   *{box-sizing:border-box}
@@ -37,13 +36,12 @@
     border:1px solid var(--line);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
-    backdrop-filter:var(--blur);
-    -webkit-backdrop-filter:var(--blur);
   }
   .viewport{
     position:absolute;
     inset:0;
     overflow:hidden;
+    contain:layout paint;
     -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
     mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
   }
@@ -202,21 +200,8 @@
     --tr:rgba(229,231,235,.62);
     --radius:0px;
     --shadow:6px 6px 0 rgba(0,0,0,.35);
-    --blur:none;
   }
   body[data-skin="pixel"] .line .orig{letter-spacing:.08em}
-  body[data-skin="lyric"]{
-    --bg:linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.04));
-    --line:transparent;
-    --text:#ffffff;
-    --sub:rgba(255,255,255,.72);
-    --accent:#7dd3fc;
-    --tr:rgba(255,255,255,.68);
-    --radius:0px;
-    --shadow:none;
-    --blur:none;
-    --text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95);
-  }
   body[data-skin="pure"]{
     --bg:transparent;
     --line:transparent;
@@ -226,23 +211,18 @@
     --tr:var(--pure-color);
     --radius:0px;
     --shadow:none;
-    --blur:none;
     --text-shadow:0 2px 12px rgba(0,0,0,.55);
   }
-  body[data-skin="pure"] .stage,
-  body[data-skin="lyric"] .stage{
+  body[data-skin="pure"] .stage{
     border:none;
     border-radius:0;
     box-shadow:none;
-    backdrop-filter:none;
-    -webkit-backdrop-filter:none;
   }
   body[data-skin="pure"] .line .orig,
   body[data-skin="pure"] .line.current .orig{
     color:var(--pure-color);
   }
   body[data-skin="pure"] .line .tr{color:var(--pure-color);opacity:.72}
-  body[data-skin="lyric"] .line .tr{color:var(--tr)}
   body[data-skin="mist"] .line .orig,
   body[data-skin="mist"] .line.current .orig,
   body[data-skin="sakura"] .line .orig,
@@ -277,12 +257,12 @@
   var DEFAULT_CONFIG = {
     lineCount: 5,
     skin: 'default',
-    translation: false,
+    translation: true,
     forceStatic: false,
     textColor: '#ffffff'
   };
   var ALLOWED_LINES = [1, 3, 5, 7];
-  var ALLOWED_SKINS = ['default', 'neon', 'mist', 'sakura', 'pixel', 'lyric', 'pure'];
+  var ALLOWED_SKINS = ['default', 'neon', 'mist', 'sakura', 'pixel', 'pure'];
 
   var config = Object.assign({}, DEFAULT_CONFIG);
   var data = null;
@@ -293,9 +273,15 @@
   var lastRenderKey = '';
   var lineEls = [];
   var lastIndex = -2;
+  var lastRawPosition = null;
+  var lastSeekSerial = null;
+  var snapPending = false;
   var lastConfigJson = '';
   var queryOverrides = readQueryOverrides();
   var lastTickAt = performance.now();
+  var layoutSlot = 0;
+  var layoutHeight = 0;
+  var lastOffset = null;
 
   function readQueryOverrides() {
     var result = {};
@@ -346,12 +332,11 @@
     return basePosition + Math.max(0, (performance.now() - receivedAt) / 1000);
   }
 
-  function findIndex(lines, position) {
-    var index = 0;
-    for (var i = 0; i < lines.length; i++) {
-      if (Number(lines[i].time) <= position + 0.04) index = i;
-      else break;
-    }
+  function findIndex(lines, position, start) {
+    var target = position + 0.04;
+    var index = (start >= 0 && start < lines.length) ? start : 0;
+    while (index + 1 < lines.length && Number(lines[index + 1].time) <= target) index++;
+    while (index > 0 && Number(lines[index].time) > target) index--;
     return index;
   }
 
@@ -414,13 +399,17 @@
   function buildTrack(lines) {
     track.innerHTML = '';
     lineEls = [];
-    var slot = viewport.clientHeight / config.lineCount;
+    var vh = viewport.clientHeight;
+    var vw = viewport.clientWidth;
+    var slot = vh / config.lineCount;
+    layoutHeight = vh;
+    layoutSlot = slot;
     stage.style.setProperty('--slot-h', slot + 'px');
 
     var baseSize = Math.max(12, Math.min(
       slot * 0.38,
-      viewport.clientWidth * 0.075,
-      viewport.clientHeight * 0.16
+      vw * 0.075,
+      vh * 0.16
     ));
     stage.style.setProperty('--lyric-font-size', baseSize + 'px');
 
@@ -450,14 +439,20 @@
     }
 
     lastIndex = -2;
+    lastOffset = null;
+    snapPending = true;
   }
 
   function updateTrack() {
     if (!data || !data.hasTimeline || !data.lines || data.lines.length === 0) return;
     if (config.forceStatic) return;
+    if (layoutSlot <= 0 || layoutHeight <= 0) return;
 
-    var position = getPosition();
-    var index = findIndex(data.lines, position);
+    // NetEase computes the visible line from playback position plus the
+    // per-song lyric offset. The API sends the offset in seconds.
+    var lyricOffset = Number(data.lyricOffset) || 0;
+    var position = getPosition() + lyricOffset;
+    var index = findIndex(data.lines, position, lastIndex);
     if (index !== lastIndex) {
       lastIndex = index;
       for (var i = 0; i < lineEls.length; i++) {
@@ -468,10 +463,26 @@
       }
     }
 
-    var slot = viewport.clientHeight / config.lineCount;
-    var middle = (config.lineCount - 1) / 2;
-    var offset = viewport.clientHeight / 2 - (index + 0.5) * slot;
-    track.style.transform = 'translateY(' + offset + 'px)';
+    // Layout values are cached in buildTrack; this avoids a forced layout
+    // read and a style write on every animation frame.
+    var lineOffset = layoutHeight / 2 - (index + 0.5) * layoutSlot;
+    if (lineOffset !== lastOffset) {
+      lastOffset = lineOffset;
+      var transform = 'translate3d(0,' + lineOffset + 'px,0)';
+      if (snapPending) {
+        // Seeks should land on the target line immediately, not sweep across
+        // every line between the old and new position.
+        track.style.transition = 'none';
+        track.style.transform = transform;
+        void track.offsetWidth;
+        track.style.transition = '';
+      } else {
+        track.style.transform = transform;
+      }
+      snapPending = false;
+    } else if (snapPending) {
+      snapPending = false;
+    }
   }
 
   function applyData() {
@@ -485,6 +496,16 @@
         'state: ' + (data.state || '-') + '\n' +
         'playing: ' + !!data.playing + '\n' +
         'position: ' + Number(data.position || 0).toFixed(2) + 's\n' +
+        'clientPos: ' + getPosition().toFixed(2) + 's\n' +
+        'offset: ' + (Number(data.lyricOffset) || 0).toFixed(2) + 's\n' +
+        'effectivePos: ' + (getPosition() + (Number(data.lyricOffset) || 0)).toFixed(2) + 's\n' +
+        'rawPos: ' + (data.rawPosition == null ? '-' : Number(data.rawPosition).toFixed(2)) + '\n' +
+        'playedPos: ' + (data.playedPosition == null ? '-' : Number(data.playedPosition).toFixed(2)) + '\n' +
+        'progressPos: ' + (data.progressPosition == null ? '-' : Number(data.progressPosition).toFixed(2)) + '\n' +
+        'sourcePos: ' + (data.positionSource || '-') + '\n' +
+        'seeked: ' + !!data.seeked + '\n' +
+        'seekSerial: ' + (data.seekSerial == null ? '-' : data.seekSerial) + '\n' +
+        'seekPos: ' + (data.seekPosition == null ? '-' : Number(data.seekPosition).toFixed(2)) + '\n' +
         'start: ' + (data.start || 0) + '\n' +
         'timeline: ' + !!data.hasTimeline + '\n' +
         'noLyrics: ' + !!data.noLyrics + '\n' +
@@ -524,10 +545,47 @@
 
   function ingest(next) {
     if (!next) return;
+    var prior = data;
+    var priorPosition = getPosition();
+    var priorSong = prior && prior.song ? prior.song.id : "";
+    var nextSong = next.song ? next.song.id : "";
+    var songChanged = nextSong !== priorSong;
+    var incoming = Number(next.position) || 0;
+    var priorRaw = lastRawPosition;
+    var raw = next.rawPosition == null ? null : Number(next.rawPosition);
+    var rawChanged = raw != null && priorRaw != null && Math.abs(raw - priorRaw) > 0.05;
+    // The seek flag is consumed by whichever request observes it first, so
+    // each page also watches rawPosition and seekSerial itself.
+    var rawSeek = raw != null && priorRaw != null && Math.abs(raw - priorRaw) > 2.5;
+    var serial = next.seekSerial == null ? null : Number(next.seekSerial);
+    var serialSeek = serial != null && lastSeekSerial != null && serial !== lastSeekSerial;
+    if (serial != null) lastSeekSerial = serial;
+    if (raw != null) lastRawPosition = raw;
+    var offsetChanged = !!prior && (Number(prior.lyricOffset) || 0) !== (Number(next.lyricOffset) || 0);
+    var seeked = !!next.seeked || rawSeek || serialSeek;
+    if (seeked || offsetChanged) snapPending = true;
+    var accept = !prior || songChanged || seeked || rawChanged || !next.playing || !playing || incoming >= priorPosition - 1.2;
+
+    // A stale/frozen server position must not pull the page back. Freeze at
+    // the current line instead; a real seek or a new raw sample carries new
+    // data and must be accepted.
+    if (!next.playing && !seeked && !rawChanged && !songChanged && incoming < priorPosition - 1.2) {
+      data = next;
+      playing = false;
+      basePosition = priorPosition;
+      receivedAt = performance.now();
+      applyData();
+      return;
+    }
+
     data = next;
-    basePosition = Number(next.position) || 0;
-    receivedAt = performance.now();
-    playing = !!next.playing;
+    if (accept) {
+      basePosition = incoming;
+      receivedAt = performance.now();
+      playing = !!next.playing;
+    } else if (!next.playing) {
+      playing = false;
+    }
     applyData();
   }
 
@@ -592,7 +650,12 @@
       if (basePosition > data.song.duration) basePosition = 0;
       data.position = basePosition;
       updateTrack();
-    } else if (data) {
+    } else if (playing && data && data.hasTimeline && !config.forceStatic) {
+      // OBS can create the source before its viewport has a size. Rebuild
+      // once a real size is available instead of keeping zero-height lines.
+      if ((layoutSlot <= 0 || layoutHeight <= 0) && viewport.clientHeight > 0) {
+        buildTrack(data.lines);
+      }
       updateTrack();
     }
     requestAnimationFrame(tick);

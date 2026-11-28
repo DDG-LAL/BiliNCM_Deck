@@ -1,4 +1,26 @@
 (() => {
+  // NCM's native player emits "seeked" after the user drags the progress
+  // bar. Keep a page-level counter so every state poll can report it.
+  let seekSerial = 0;
+  try {
+    if (!window.__biliNcmSeekHookV2) {
+      const cef = window.ctl && window.ctl.cefPlayer;
+      if (cef && typeof cef.Ti === 'function') {
+        const hook = { serial: 0, position: null, at: 0 };
+        cef.Ti('seeked', function (evt) {
+          hook.serial += 1;
+          const position = evt && Number(evt.position);
+          if (Number.isFinite(position)) {
+            hook.position = position;
+            hook.at = Date.now();
+          }
+        });
+        window.__biliNcmSeekHookV2 = hook;
+      }
+    }
+    seekSerial = (window.__biliNcmSeekHookV2 && window.__biliNcmSeekHookV2.serial) || 0;
+  } catch (e) { }
+
   function ensureStore() {
     if (window._reduxStore) return true;
     const portal = document.querySelector('#portal_root');
@@ -73,7 +95,7 @@
       if (Array.isArray(u.data.artists)) {
         curArtists = u.data.artists.map(a => a && a.name).filter(Boolean).join('/');
       }
-      const durationValue = u.data.dt != null ? u.data.dt : u.data.duration;
+      const durationValue = u.data.duration != null ? u.data.duration : u.data.dt;
       const durationNumber = Number(durationValue);
       if (Number.isFinite(durationNumber) && durationNumber > 0) curDuration = durationNumber;
       if (u.from) {
@@ -81,10 +103,12 @@
         if (u.from.startlogtime != null) curStart = String(u.from.startlogtime);
       }
       curState = u.state;
+      // NetEase's u.from.playedTime is the actual playback progress in
+      // seconds. u.data.position is the track number, not time, so never use
+      // it here.
       const positionCandidates = [
-        u.position, u.currentTime, u.playedTime, u.progress,
-        u.data.position, u.data.currentTime, u.data.playedTime, u.data.progress,
-        m && m.position, m && m.currentTime, m && m.playedTime, m && m.progress
+        u.from && u.from.playedTime,
+        u.from && u.from.lastTime
       ];
       for (let i = 0; i < positionCandidates.length; i++) {
         const positionNumber = Number(positionCandidates[i]);
@@ -113,6 +137,18 @@
   const entry = idx >= 0 ? queue[idx] : (cpl.find(x => x.id === curId) || null);
   if (!curName && entry) curName = entry.name;
   if (!curArtists && entry) curArtists = entry.artists;
+  let lyricOffset = 0;
+  if (curId && m && typeof m.Ln === 'function') {
+    try {
+      const value = m.Ln(curId);
+      if (value != null && Number.isFinite(Number(value))) lyricOffset = Number(value);
+    } catch (e) { }
+  }
+  let progressPosition = null;
+  try {
+    const cef = window.ctl && window.ctl.cefPlayer;
+    if (cef && Number.isFinite(Number(cef.w6)) && Number(cef.w6) >= 0) progressPosition = Number(cef.w6);
+  } catch (e) { }
   const current = curId ? {
     id: curId,
     qid: curWrapper,
@@ -121,7 +157,13 @@
     start: curStart,
     state: curState,
     duration: curDuration,
-    position: curPosition
+    position: curPosition,
+    progressPosition: progressPosition,
+    lyricOffset: lyricOffset,
+    seekSerial: seekSerial,
+    seekPosition: (window.__biliNcmSeekHookV2 && Number.isFinite(window.__biliNcmSeekHookV2.position))
+      ? window.__biliNcmSeekHookV2.position
+      : null
   } : null;
   return JSON.stringify({
     ok: true,

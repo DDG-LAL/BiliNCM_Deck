@@ -37,6 +37,10 @@ namespace BiliNetEaseIntegratedApp
             public long duration { get; set; }
             public string state { get; set; } = "";
             public double? position { get; set; }
+            public double lyricOffset { get; set; }
+            public long seekSerial { get; set; }
+            public double? seekPosition { get; set; }
+            public double? progressPosition { get; set; }
         }
 
         internal sealed class StateView
@@ -81,6 +85,10 @@ namespace BiliNetEaseIntegratedApp
             public long Duration;
             public string State = "";
             public double? Position;
+            public double LyricOffset;
+            public long SeekSerial;
+            public double? SeekPosition;
+            public double? ProgressPosition;
         }
 
         private sealed class NcmSnapshot
@@ -980,6 +988,10 @@ namespace BiliNetEaseIntegratedApp
                         Duration = GetLong(current, "duration", 0),
                         State = GetString(current, "state"),
                         Position = GetDouble(current, "position"),
+                        LyricOffset = GetDouble(current, "lyricOffset") ?? 0,
+                        SeekSerial = GetLong(current, "seekSerial", 0),
+                        SeekPosition = GetDouble(current, "seekPosition"),
+                        ProgressPosition = GetDouble(current, "progressPosition"),
                         Qid = snap.CurrentWrapper
                     };
                 }
@@ -1041,7 +1053,11 @@ namespace BiliNetEaseIntegratedApp
                         start = ncm.Current.Start,
                         duration = ncm.Current.Duration,
                         state = ncm.Current.State,
-                        position = ncm.Current.Position
+                        position = ncm.Current.Position,
+                        lyricOffset = ncm.Current.LyricOffset / 1000.0,
+                        seekSerial = ncm.Current.SeekSerial,
+                        seekPosition = ncm.Current.SeekPosition,
+                        progressPosition = ncm.Current.ProgressPosition
                     };
                 }
 

@@ -31,24 +31,32 @@ namespace BiliNetEaseIntegratedApp
 
     internal sealed class LyricsConfig
     {
+        public const int CurrentSchemaVersion = 1;
+
+        public int schemaVersion { get; set; } = 0;
         public int lineCount { get; set; } = 5;
         public string skin { get; set; } = "default";
-        public bool translation { get; set; } = false;
+        public bool translation { get; set; } = true;
         public bool forceStatic { get; set; } = false;
         public string textColor { get; set; } = "#ffffff";
 
         public static readonly int[] AllowedLineCounts = { 1, 3, 5, 7 };
         public static readonly string[] AllowedSkins =
         {
-            "default", "neon", "mist", "sakura", "pixel", "lyric", "pure"
+            "default", "neon", "mist", "sakura", "pixel", "pure"
         };
 
         public LyricsConfig Normalize()
         {
+            string requestedSkin = skin ?? "";
+            string normalizedSkin = requestedSkin == "lyric"
+                ? "pure"
+                : (AllowedSkins.Contains(requestedSkin) ? requestedSkin : "default");
             return new LyricsConfig
             {
+                schemaVersion = schemaVersion,
                 lineCount = AllowedLineCounts.Contains(lineCount) ? lineCount : 5,
-                skin = AllowedSkins.Contains(skin ?? "") ? skin : "default",
+                skin = normalizedSkin,
                 translation = translation,
                 forceStatic = forceStatic,
                 textColor = Regex.IsMatch(textColor ?? "", "^#[0-9a-fA-F]{6}$") ? textColor : "#ffffff"
@@ -489,7 +497,7 @@ namespace BiliNetEaseIntegratedApp
             var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(8) };
             client.DefaultRequestHeaders.TryAddWithoutValidation(
                 "User-Agent",
-                "BiliNCM-Deck/1.1.0 (+https://github.com/DDG-LAL/BiliNCM_Deck)");
+                "BiliNCM-Deck/1.1.2 (+https://github.com/DDG-LAL/BiliNCM_Deck)");
             return client;
         }
 
@@ -508,40 +516,148 @@ namespace BiliNetEaseIntegratedApp
         private string _songId = "";
         private double _lastPosition;
         private long _lastAt;
+        private double? _lastRawPosition;
+        private long _lastRawAdvanceAt;
+        private long _lastSeekSerial;
+        private long _seekedUntilMs;
+        private double? _seekOverride;
+        private double? _seekOverrideRaw;
+        private long _seekOverrideAt;
 
-        public (bool playing, double position) Resolve(CompanionQueueEngine.SongView current, long nowMs)
+        public (bool playing, double position, bool seeked, double? rawPosition, string source) Resolve(CompanionQueueEngine.SongView current, long nowMs)
         {
             lock (_lock)
             {
                 string songId = current.id ?? "";
-                bool playing = IsPlaying(current.state);
+                bool statePlaying = IsPlaying(current.state);
                 double duration = current.duration > 0 ? current.duration / 1000.0 : 0;
                 bool songChanged = !string.Equals(songId, _songId, StringComparison.Ordinal);
+                bool seeked = false;
 
                 if (songChanged)
                 {
                     _songId = songId;
                     _lastPosition = 0;
                     _lastAt = nowMs;
+                    _lastRawPosition = null;
+                    _lastRawAdvanceAt = nowMs;
+                    _lastSeekSerial = current.seekSerial;
+                    _seekedUntilMs = 0;
+                    _seekOverride = null;
+                    _seekOverrideRaw = null;
                 }
 
+                // cefPlayer.w6 is the native progress position and tracks
+                // seeks correctly. u.from.playedTime can stay stale after a
+                // seek, so prefer the native progress value.
+                bool useProgress = current.progressPosition.HasValue;
+                if (useProgress && current.progressPosition!.Value <= 0.01 && !statePlaying &&
+                    current.position.HasValue && current.position.Value > 5)
+                {
+                    useProgress = false;
+                }
+                double? rawSource = useProgress ? current.progressPosition : current.position;
+                string rawSourceName = useProgress ? "progress" : (current.position.HasValue ? "played" : "clock");
+
+                bool serialSeek = current.seekSerial != _lastSeekSerial;
+                if (serialSeek)
+                {
+                    _lastSeekSerial = current.seekSerial;
+                    _seekedUntilMs = nowMs + 2000;
+                    _lastRawAdvanceAt = nowMs;
+                    if (current.seekPosition.HasValue)
+                    {
+                        _seekOverride = NormalizePosition(current.seekPosition.Value, duration);
+                        _seekOverrideRaw = rawSource;
+                        _seekOverrideAt = nowMs;
+                    }
+                    else
+                    {
+                        _seekOverride = null;
+                        _seekOverrideRaw = null;
+                    }
+                }
+
+                if (_seekOverride.HasValue && rawSource.HasValue && _seekOverrideRaw.HasValue &&
+                    Math.Abs(rawSource.Value - _seekOverrideRaw.Value) > 0.05)
+                {
+                    // The native progress position has caught up with the seek.
+                    _seekOverride = null;
+                    _seekOverrideRaw = null;
+                }
+
+                if (_seekOverride.HasValue)
+                {
+                    // The native seek event is authoritative, especially while
+                    // paused: NCM may keep the old playedTime for a while.
+                    double seekPosition = _seekOverride.Value;
+                    if (statePlaying)
+                        seekPosition += Math.Max(0, nowMs - _seekOverrideAt) / 1000.0;
+                    if (duration > 0)
+                        seekPosition = Math.Clamp(seekPosition, 0, duration);
+                    else if (seekPosition < 0)
+                        seekPosition = 0;
+                    _lastPosition = seekPosition;
+                    _lastAt = nowMs;
+                    _lastRawAdvanceAt = nowMs;
+                    return (statePlaying, seekPosition, true, rawSource, "seek");
+                }
+
+                bool playing = statePlaying;
                 double position;
-                if (current.position.HasValue)
+
+                if (rawSource.HasValue)
                 {
-                    position = NormalizePosition(current.position.Value, duration);
-                }
-                else if (playing && current.start > 0)
-                {
-                    position = (nowMs - current.start) / 1000.0;
-                }
-                else if (playing)
-                {
-                    position = _lastPosition + Math.Max(0, nowMs - _lastAt) / 1000.0;
+                    double raw = NormalizePosition(rawSource.Value, duration);
+                    if (!_lastRawPosition.HasValue)
+                    {
+                        _lastRawAdvanceAt = nowMs;
+                    }
+                    else
+                    {
+                        double delta = raw - _lastRawPosition.Value;
+                        if (Math.Abs(delta) > 2.5)
+                        {
+                            // A real seek. Allow the client to realign.
+                            seeked = true;
+                            _seekedUntilMs = nowMs + 2000;
+                            _lastRawAdvanceAt = nowMs;
+                        }
+                        else if (Math.Abs(delta) > 0.01)
+                        {
+                            _lastRawAdvanceAt = nowMs;
+                        }
+                        // A repeated value is normal between NCM's ~1 Hz
+                        // progress updates. Only a wall-clock stall freezes.
+                    }
+                    _lastRawPosition = raw;
+
+                    if (playing && nowMs - _lastRawAdvanceAt >= 3000)
+                    {
+                        // State still says playing, but the position stopped
+                        // advancing. Freeze instead of drifting forever.
+                        playing = false;
+                        position = _lastPosition;
+                    }
+                    else
+                    {
+                        position = raw;
+                    }
                 }
                 else
                 {
-                    position = _lastPosition;
+                    _lastRawPosition = null;
+                    _lastRawAdvanceAt = nowMs;
+                    // startlogtime is not reliable after pause/seek, so use
+                    // the local monotonic clock as the fallback.
+                    position = playing
+                        ? _lastPosition + Math.Max(0, nowMs - _lastAt) / 1000.0
+                        : _lastPosition;
                 }
+
+                // Do not discard deliberate backward drags. The frontend has
+                // its own stale guard, and new raw samples are authoritative.
+                seeked = seeked || serialSeek || nowMs <= _seekedUntilMs;
 
                 if (duration > 0)
                     position = Math.Clamp(position, 0, duration);
@@ -550,21 +666,22 @@ namespace BiliNetEaseIntegratedApp
 
                 _lastPosition = position;
                 _lastAt = nowMs;
-                return (playing, position);
+                return (playing, position, seeked, rawSource, seeked ? "seek" : rawSourceName);
             }
         }
 
         private static bool IsPlaying(string state)
         {
-            if (string.IsNullOrWhiteSpace(state)) return true;
+            if (string.IsNullOrWhiteSpace(state)) return false;
             string value = state.Trim();
             if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numeric))
-                return numeric != 0 && numeric != 2;
+            {
+                // NetEase 2.10.13: 2 = playing, 1 / 0 / -1 = paused or stopped.
+                return numeric == 2;
+            }
 
             value = value.ToLowerInvariant();
-            if (value is "1" or "true" or "playing" or "play" or "resume") return true;
-            if (value is "0" or "2" or "false" or "paused" or "pause" or "stopped" or "stop") return false;
-            return true;
+            return value is "2" or "true" or "playing" or "play" or "resume";
         }
 
         private static double NormalizePosition(double position, double durationSeconds)
